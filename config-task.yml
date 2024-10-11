@@ -1,10 +1,10 @@
 # Name and metadata of your task
-task_name: 'AssholeInChief'
-author: 'AIC'
+task_name: 'Birds Tweeting Task'
+author: 'Koii'
 description: "We invite you to volunteer your spare Twitter account and join our mission to hold politicians accountable and shake up the status quo! We're on a quest to spotlight and confront public figures who fall short of integrity and responsibility. By diving into this initiative, you'll play a crucial role in exposing crucial issues and shaking up the political landscape. Please note that we only make one post per account every 24 hours. The task involves posting one (1) comment per day, which will look like:  '(TWITTER_COMMENTS) + 🛋🛋🛋'. Before participating, please ensure that your volunteer Twitter account has passed the verification process. The base bounty per round is 1000 RATS."
-repositoryUrl: 'https://github.com/chaollapark/SecretProject/'
-imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeidqyigsevqzkxiuprzxipbakvf54gxe4ft427wxb5v5wbj54epdo4/AssholeInChief.png'
-infoUrl: 'https://www.koii.network/ocean/66cf47e86cbc7cbe924f0474'
+repositoryUrl: 'https://github.com/koii-network/task-X'
+imageUrl: 'https://www.koii.network/_next/image?url=https%3A%2F%2Fkoii-ocean.s3.us-west-1.amazonaws.com%2Ff92f6ccb933f4558934a7438511055d3.png&w=640&q=75'
+infoUrl: 'https://www.koii.network/ocean/66e88d57447c327be47bb5bd'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -13,23 +13,23 @@ task_executable_network: 'IPFS'
 task_audit_program: 'dist/main.js'
 
 # Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
-round_time: 100000
-audit_window: 40000
-submission_window: 40000
+round_time: 6000
+audit_window: 2500
+submission_window: 2500
 
 # Amounts in KOII
-minimum_stake_amount: 1.9
+minimum_stake_amount: 0.1
 
 # total_bounty_amount cannot be grater than bounty_amount_per_round
 # total bounty is not accepted in case of update task
-total_bounty_amount: 10000
-bounty_amount_per_round: 1000
+total_bounty_amount: 100
+bounty_amount_per_round: 10
 
 #Number of times allowed to re-submit the distribution  list in case the distribution list is audited
-allowed_failed_distributions: 5
+allowed_failed_distributions: 3
 
 #Space in MBs for the account size, that holds the task data
-space: 5
+space: 0.1
 
 # Note that the value field in RequirementTag is optional, so it is up to you to include it or not based on your use case.
 # To add more global variables and task variables, please refer the type,value,description format shown below
@@ -54,11 +54,11 @@ requirementsTags:
 # token type KPL
 task_type: 'KPL'
 
-# mint address
-token_type: 'BmdvRw51zhCKfkBmw6jmLawJafimTMtZ2eVwT3fL2WM6'
+# mint address BIRD
+token_type: 'NGFruaQX9xHqWv195RNQL2wtq2LJwTmnkE9XjGAZKHx'
 
 tags: ['Social Posting']
-environment: 'PRODUCTION'
+environment: 'TEST'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
 task_id: '3gSfSGoBYLBd65kn3XBq7QAbPUwknBQQA7zz69yZi6Vx'
