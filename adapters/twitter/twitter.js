@@ -1024,7 +1024,7 @@ selectSnippet (snippetSelector, textToRead) {
 
   checkCommentTimestamp = (currentTimeStamp, Timestamp) => {
     try {
-      const HOURS_OPTIONS = [22, 24, 26];
+      const HOURS_OPTIONS = [0.5];
       const getRandomHours = options =>
         options[Math.floor(Math.random() * options.length)];
       const HOURS_IN_MS = 60 * 60 * 1000;
