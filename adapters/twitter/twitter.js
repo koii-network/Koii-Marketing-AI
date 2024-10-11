@@ -429,8 +429,8 @@ class Twitter extends Adapter {
       // await page.type(selector, char);
       if (char === char.toUpperCase() && char.match(/[a-zA-Z]/)) {
         await page.keyboard.down('Shift'); // Hold down Shift for capital letters
-        await page.keyboard.press(char);   // Press the capital letter
-        await page.keyboard.up('Shift');   // Release Shift
+        await page.keyboard.press(char); // Press the capital letter
+        await page.keyboard.up('Shift'); // Release Shift
       } else {
         // Directly press other characters (lowercase, numbers, symbols)
         if (char === ' ') {
@@ -443,37 +443,42 @@ class Twitter extends Adapter {
       // Randomly vary typing speed to mimic human behavior
       const typingSpeed = Math.random() * 150 + 50;
       await page.waitForTimeout(typingSpeed);
-  
+
       // Randomly add "thinking pauses" after some words
       if (char === ' ' && Math.random() < 0.2) {
         const thinkingPause = Math.random() * 1500 + 500;
         await page.waitForTimeout(thinkingPause);
       }
-  
+
       // Randomly simulate small typing errors and corrections
-      if (Math.random() < 0.08) { // 8% chance of error
-        const errorChar = String.fromCharCode(Math.floor(Math.random() * 26) + 97); // Random lowercase letter
-        await page.type(selector, errorChar);  // Type incorrect character
+      if (Math.random() < 0.08) {
+        // 8% chance of error
+        const errorChar = String.fromCharCode(
+          Math.floor(Math.random() * 26) + 97,
+        ); // Random lowercase letter
+        await page.type(selector, errorChar); // Type incorrect character
         await page.waitForTimeout(typingSpeed / 0.8); // Short delay after mistake
         await page.keyboard.press('Backspace'); // Correct the mistake
       }
-  
+
       // Randomly add a longer pause to mimic thinking (more rarely)
       if (Math.random() < 0.1) {
         const longPause = Math.random() * 2000 + 500;
         await page.waitForTimeout(longPause);
       }
     }
-    
+
     // Extra delay after finishing typing to simulate human thinking or reviewing
     const finishDelay = Math.random() * 3000 + 1000;
-    console.log(`Finished typing. Waiting for additional mouse delay of ${finishDelay} ms`);
-    
+    console.log(
+      `Finished typing. Waiting for additional mouse delay of ${finishDelay} ms`,
+    );
+
     // Simulate random mouse movement during the pause
     await this.randomMouseMovement(page, finishDelay);
   };
 
-    // Function to simulate random mouse movement during thinking pauses
+  // Function to simulate random mouse movement during thinking pauses
   randomMouseMovement = async (page, pauseDuration) => {
     const startX = Math.random() * 500 + 100; // Start somewhere within a random range
     const startY = Math.random() * 300 + 100;
@@ -631,6 +636,21 @@ class Twitter extends Adapter {
     return {};
   };
 
+  moveMouseSmoothly = async (page, targetX, targetY) => {
+    const minSteps = 5;
+    const maxSteps = 20;
+    const steps =
+      Math.floor(Math.random() * (maxSteps - minSteps + 1)) + minSteps;
+
+    for (let i = 0; i <= steps; i++) {
+      await page.mouse.move(
+        targetX - (targetX / steps) * (steps - i),
+        targetY - (targetY / steps) * (steps - i),
+      );
+      await page.waitForTimeout(await this.randomDelay(3000));
+    }
+  };
+
   /**
    * parseItem
    * @param {string} url - the url of the item to parse
@@ -684,6 +704,72 @@ class Twitter extends Adapter {
       await commentPage.bringToFront();
       await commentPage.waitForTimeout(await this.randomDelay(8000));
 
+      // This is for the like button
+      const buttonSelector = 'button[data-testid="like"]';
+      await commentPage.waitForSelector(buttonSelector, { timeout: 10000 });
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      await commentPage.evaluate(buttonSelector => {
+        const element = document.querySelector(buttonSelector);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, buttonSelector);
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      const likeButton = await commentPage.$(buttonSelector);
+      const buttonBox = await likeButton.boundingBox();
+
+      const isButtonVisible = await commentPage.evaluate(buttonSelector => {
+        const element = document.querySelector(buttonSelector);
+        if (element) {
+          const { offsetWidth, offsetHeight } = element;
+          return (
+            offsetWidth > 0 &&
+            offsetHeight > 0 &&
+            !element.disabled &&
+            window.getComputedStyle(element).visibility !== 'hidden'
+          );
+        }
+        return false;
+      }, buttonSelector);
+
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      if (buttonBox && isButtonVisible) {
+        const unlikeButton = 'button[data-testid="unlike"]';
+        const isUnlike = await commentPage.evaluate(unlikeButton => {
+          const element = document.querySelector(unlikeButton);
+          return element && element.getAttribute('data-testid') === 'unlike';
+        }, unlikeButton);
+
+        if (isUnlike) {
+          console.log(
+            'Post is already liked (unlike button present). No action taken.',
+          );
+          await commentPage.close();
+          await commentPage.waitForTimeout(await this.randomDelay(2000));
+          return data;
+        }
+
+        await commentPage.waitForTimeout(await this.randomDelay(3000));
+        await this.moveMouseSmoothly(
+          commentPage,
+          buttonBox.x + buttonBox.width / 2,
+          buttonBox.y + buttonBox.height / 2,
+        );
+        await commentPage.mouse.click(
+          buttonBox.x + buttonBox.width / 2,
+          buttonBox.y + buttonBox.height / 2,
+        );
+        console.log('Button clicked successfully.');
+      } else {
+        console.error(
+          'Button is not visible, disabled, or bounding box is null. Check for overlaps or state.',
+        );
+      }
+
+      await commentPage.waitForTimeout(await this.randomDelay(4000));
+
       // check if already comments or not
       // check if comment is posted or not if posted then get the details
       const checkComments = await this.getTheCommentDetails(
@@ -698,6 +784,7 @@ class Twitter extends Adapter {
         Object.keys(checkComments).length > 0
       ) {
         await commentPage.close();
+        await commentPage.waitForTimeout(await this.randomDelay(2000));
         return data;
       }
 
