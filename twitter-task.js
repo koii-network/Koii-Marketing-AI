@@ -108,7 +108,11 @@ class TwitterTask {
    */
   async fetchSearchTerms() {
     let keyword;
+    let search;
     try {
+      let searchList = [ 'depin', '@al_from_koii', 'koii', 'AI' ]
+      // pick random search term
+      search = searchList[Math.floor(Math.random() * searchList.length)];
       const submitterAccountKeyPair = (
         await namespaceWrapper.getSubmitterAccount()
       ).publicKey;
@@ -128,7 +132,7 @@ class TwitterTask {
       keyword = wordsList[randomIndex];
     }
 
-    return { comment: keyword, search: 'JDVance' };
+    return { comment: keyword, search: search };
   }
 
   /**
@@ -164,7 +168,7 @@ class TwitterTask {
     let query = {
       limit: 100,
       searchTerm: this.searchTerm,
-      query: `https://x.com/${this.searchTerm}`,
+      query: `https://x.com/search?q=${this.searchTerm}&src=typed_query&f=live`,
       comment: `${this.comment} ${getRandomEmojis}  ${selectedHashtags}`,
       depth: 3,
       round: this.round,

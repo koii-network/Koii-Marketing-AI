@@ -8,6 +8,7 @@ const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const nlp = require('compromise');
 
 /**
  * Twitter
@@ -268,9 +269,11 @@ class Twitter extends Adapter {
 
   tryLoginWithCookies = async currentPage => {
     const cookies = await this.db.getItem({ id: 'cookies' });
-    if (cookies && cookies.data && cookies.data.length > 0) {
+    // console.log('cookies', cookies);
+    if (cookies !== null) {
       // set the cookies
-      await currentPage.setCookie(...cookies);
+      await currentPage.setCookie(...cookies[0].data);
+      await currentPage.waitForTimeout(await this.randomDelay(5000));
       await currentPage.goto('https://x.com/home');
       await currentPage.waitForTimeout(await this.randomDelay(5000));
 
@@ -308,7 +311,7 @@ class Twitter extends Adapter {
         'https://x.com/i/flow/login?redirect_after_login=%2Fhome' &&
       !(await newPage.url()).includes('https://x.com/?logout=');
     if (isLoggedIn) {
-      console.log('Logged in using existing cookies');
+      // console.log('Logged in using existing cookies');
       console.log('Updating last session check');
       this.sessionValid = true;
     } else {
@@ -421,7 +424,17 @@ class Twitter extends Adapter {
     }
   };
 
-  humanType = async (page, selector, text) => {
+  humanType = async (page, selector, text, genText) => {
+    let textList = [
+        `We got ${genText} before we got Koii mainnet`,
+        `I can't believe we got ${genText} before Koii launched.`,
+        `Wow, ${genText} is dope and all, but I want Koii.`,
+        `Wen ${genText}, Koii launch?`
+    ]
+    const randomIndex = Math.floor(Math.random() * textList.length);
+
+    // Get the random element from the array
+    text = textList[randomIndex];
     await page.click(selector); // Focus on the input field
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
@@ -697,8 +710,9 @@ class Twitter extends Adapter {
 
       // open comment page
       const commentPage = await currentBrowser.newPage();
-      const getNewPageUrl = `${url}/status/${tweetId}`;
+      const getNewPageUrl = `https://x.com/any/status/${tweetId}`;
       await commentPage.goto(getNewPageUrl);
+      console.log('go to tweets:', getNewPageUrl);
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.evaluate(() => window.focus());
       await commentPage.bringToFront();
@@ -789,6 +803,10 @@ class Twitter extends Adapter {
       }
 
       // write a comment and post
+      console.log('Start genText *******************');
+      let genText = await this.genText(tweets_content);
+      console.log('genText', genText);
+      console.log('End genText *******************');
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       const writeSelector =
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]';
@@ -804,7 +822,7 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.click(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(6000));
-      await this.humanType(commentPage, writeSelector, this.comment);
+      await this.humanType(commentPage, writeSelector, this.comment, genText);
       await commentPage.waitForTimeout(await this.randomDelay(8000));
       // button for post the comment
       await commentPage.evaluate(async () => {
@@ -860,6 +878,81 @@ class Twitter extends Adapter {
       );
     }
   };
+/*
+    @genText
+    Receives a blurb to read, then returns a random koii-themed blurb
+    * textToRead receives a blurb of text 
+    @return => templated blurb
+*/
+
+ genText(textToRead) {
+  let snippetSelectors = [
+      '#Person',
+      '#Possessive #Noun',
+      '#Preposition #Noun',
+      '#ProperNoun',
+      '#FirstName',
+      '#Adjective #Noun #Noun',
+      '#Adjective #Noun',
+      '#Noun #Noun #Noun',
+      '#Preposition #ProperNoun',
+      '#Verb #Noun',
+      '#ProperNoun #Verb',
+      '#Verb #ProperNoun',
+      '#Adverb #Verb',
+  ]
+  let result = 0;
+  let n = 0;
+  do {
+      let snippet = this.selectSnippet(snippetSelectors[n], textToRead)
+      if (snippet.length > 1) {
+          // console.log('found result', snippet, 'with selector ', snippetSelectors[n])
+          if (snippet.length < 20) {
+              result = snippet;
+              // console.log('\r\nfound: "', result ,'" on selector ', n)
+              if (n > 7) result = " you " + result.substring(2) ;
+          }
+      } 
+      n++;
+  } while (result == 0 && n < snippetSelectors.length)
+
+  if (result == 0 ) {
+      // console.log('\r\nFAILED to find text in ', textToRead)
+      result = "#REDTober"
+  }
+
+  let templates = [
+      `We got ${result} before we got Koii mainnet`,
+      `I can't believe we got ${result} before Koii launched.`,
+      `Wow, ${result} is dope and all, but I want Koii.`,
+      `Wen ${result}, Koii launch?`
+  ];
+  // let output = templates[Math.floor(Math.random() * (templates.length - 1))];
+      // output = nlp(output);
+  let output = result;
+  return output;
+}
+
+/**
+* Attempts to return a sensible snippet from the provided text
+* @param {*} text 
+*/
+selectSnippet (snippetSelector, textToRead) {
+  let doc = nlp(textToRead);
+
+  let snippet = doc.match(snippetSelector).text()
+      snippet = nlp(snippet);
+      snippet.nouns().toPlural();
+      snippet.people().normalize();
+      snippet.toLowerCase();
+      snippet.verbs().toGerund();
+      snippet = snippet.text();
+      if (snippet.length < 1) snippet = 0;
+      // console.log( 'selector', snippetSelector, 'found snippet: ', snippet);
+
+  
+  return snippet;
+}
 
   convertToTimestamp = async dateString => {
     const date = new Date(dateString);

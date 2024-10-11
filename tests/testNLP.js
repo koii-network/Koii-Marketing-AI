@@ -1,64 +1,133 @@
-const winkNLP = require('wink-nlp');
-const model = require('wink-eng-lite-web-model');
-const nlp = winkNLP(model);
+const nlp = require('compromise');
 
-function extractProperNouns(article) {
-  const patterns = [
-    { name: 'nounPhrase', patterns: ['[|DET] [|ADJ] [NOUN|PROPN]'] },
-  ];
-  nlp.learnCustomEntities(patterns);
-  const doc = nlp.readDoc(article);
+let text = [
+  `
+  Everyone WANTS to invest in fundamentals for 🚀, but we are being FORCED to invest in memes for 💰 
 
-  const properNouns = doc.customEntities().out();
+  So, how do we turn this degen meme energy into a sustainable flywheel 🛞 for AI 🤖?
+  `,
 
-  return properNouns;
+  `You either die a hero or live long enough to get followed by 
+  @MarioNawfal
+   
+  
+  If DePIN isn't on your radars yet, it will be soon
+  `,
+
+  `Over the last month, over 100TB of data was offloaded to 
+  @helium_mobile
+   from users of other carriers - 6x more data than 3 months prior combined
+  
+  That's the power of DePIN🎈
+  `,
+
+  `There's nothing wrong with centralization, except...
+  FLUX legend 
+  @Jefke_ST
+   at the DePIN Day event.
+  `,
+
+  `Gm! Got to have dinner with U.S. Department of Housing and Urban Development and California Department of Financial Protection and Innovation talking peaq, DePIN & RWA's.
+  `
+  ,
+  `
+  Getting back into DePIN spaces next week, set those reminders and add to calendar fam!
+  `,
+  `On the last episode of the DePIN Hub Podcast, we have 
+  @Qualoo_Network
+  , 
+  @LProundtable
+  , and 
+  @DePIN_aaron
+   in our beautiful mansion in Koh Samui 🇹🇭
+  
+  Our intern forgot to add the video to X as a long form, but we want to post here as it was an amazing conversation, hope you enjoy it
+  `
+]
+let n = 0;
+console.log('starting ', text.length)
+for ( let n = 0; n < text.length; n++ ) {
+
+  let result = genText(text[n]);
+  console.log(n, result);
+
 }
 
-function createSentence(article) {
-  const properNouns = extractProperNouns(article);
-  if (properNouns.length === 0) {
-    return 'No proper nouns found.';
-  }
 
-  const sentences = properNouns.map(
-    noun => `Wow, I can’t believe we got ${noun} before Koii mainnet.`,
-  );
-  return sentences;
+// @SOMA please add lines below into your code
+
+
+/*
+    @genText
+    Receives a blurb to read, then returns a random koii-themed blurb
+    * textToRead receives a blurb of text 
+    @return => templated blurb
+*/
+function genText (textToRead) {
+    let snippetSelectors = [
+        '#Person',
+        '#Possessive #Noun',
+        '#Preposition #Noun',
+        '#ProperNoun',
+        '#FirstName',
+        '#Adjective #Noun #Noun',
+        '#Adjective #Noun',
+        '#Noun #Noun #Noun',
+        '#Preposition #ProperNoun',
+        '#Verb #Noun',
+        '#ProperNoun #Verb',
+        '#Verb #ProperNoun',
+        '#Adverb #Verb',
+    ]
+    let result = 0;
+    let n = 0;
+    do {
+        let snippet = selectSnippet(snippetSelectors[n], textToRead)
+        if (snippet.length > 1) {
+            // console.log('found result', snippet, 'with selector ', snippetSelectors[n])
+            if (snippet.length < 20) {
+                result = snippet;
+                // console.log('\r\nfound: "', result ,'" on selector ', n)
+                if (n > 7) result = " you " + result.substring(2) ;
+            }
+        } 
+        n++;
+    } while (result == 0 && n < snippetSelectors.length)
+
+    if (result == 0 ) {
+        // console.log('\r\nFAILED to find text in ', textToRead)
+        result = "#REDTober"
+    }
+
+    let templates = [
+        `We got ${result} before we got Koii mainnet`,
+        `I can't believe we got ${result} before Koii launched.`,
+        `Wow, ${result} is dope and all, but I want Koii.`,
+        `Wen ${result}, Koii launch?`
+    ];
+    // let output = templates[Math.floor(Math.random() * (templates.length - 1))];
+        // output = nlp(output);
+    let output = result;
+    return output;
 }
 
-const articleText =
-  'Our border czar Kamala Harris opened up the border by design. Now real people are suffering.';
+/**
+ * Attempts to return a sensible snippet from the provided text
+ * @param {*} text 
+ */
+function selectSnippet (snippetSelector, textToRead) {
+    let doc = nlp(textToRead);
 
-console.log(createSentence(articleText));
+    let snippet = doc.match(snippetSelector).text()
+        snippet = nlp(snippet);
+        snippet.nouns().toPlural();
+        snippet.people().normalize();
+        snippet.toLowerCase();
+        snippet.verbs().toGerund();
+        snippet = snippet.text();
+        if (snippet.length < 1) snippet = 0;
+        // console.log( 'selector', snippetSelector, 'found snippet: ', snippet);
 
-// // Load wink-nlp package.
-// const winkNLP = require('wink-nlp');
-// // Load english language model — light version.
-// const model = require('wink-eng-lite-web-model');
-// // Instantiate winkNLP.
-// const nlp = winkNLP(model);
-// // Obtain "its" helper to extract item properties.
-// const its = nlp.its;
-// // Obtain "as" reducer helper to reduce a collection.
-// const as = nlp.as;
-
-// async function main() {
-//   const text = "Over the last month, over 100TB of data was offloaded to @helium_mobilefrom users of other carriers - 6x more data than 3 months prior combined. That's the power of DePIN🎈";
-
-//   // Read the text into wink-nlp.
-//   const doc = nlp.readDoc(text);
-
-//   // Print all tokens to see how DePIN is classified
-//   const allTokens = doc.tokens().out(its.detail);
-//   console.log('All Tokens:', allTokens);
-
-//   // Get tokens and filter for nouns, including manually flagging "DePIN"
-//   const nounTokens = doc.tokens()
-//     .filter(token => token.out(its.pos) === 'NOUN' || token.out(its.text) === 'DePIN')
-//     .out(its.text);
-
-//   // Output the filtered nouns including DePIN
-//   console.log('Nouns:', nounTokens);
-// }
-
-// main();
+    
+    return snippet;
+}

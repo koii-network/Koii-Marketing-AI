@@ -26,6 +26,7 @@
     "cheerio": "^1.0.0-rc.12",
     "cid": "multiformats/cid",
     "cids": "^1.1.9",
+    "compromise": "^14.14.2",
     "dotenv": "^16.0.3",
     "dotenv-webpack": "^8.1.0",
     "eslint": "^9.5.0",
