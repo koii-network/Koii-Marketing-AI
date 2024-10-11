@@ -88,7 +88,7 @@ class Twitter extends Adapter {
       this.browser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userDataDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -422,18 +422,74 @@ class Twitter extends Adapter {
   };
 
   humanType = async (page, selector, text) => {
-    for (const char of text) {
-      await page.type(selector, char);
-      const typingSpeed = Math.random() * 200 + 70;
-      await page.waitForTimeout(typingSpeed);
+    await page.click(selector); // Focus on the input field
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
 
-      // Randomly add longer pauses to mimic thinking
-      if (Math.random() < 0.1) {
-        const thinkingPause = Math.random() * 2000 + 300;
+      // await page.type(selector, char);
+      if (char === char.toUpperCase() && char.match(/[a-zA-Z]/)) {
+        await page.keyboard.down('Shift'); // Hold down Shift for capital letters
+        await page.keyboard.press(char);   // Press the capital letter
+        await page.keyboard.up('Shift');   // Release Shift
+      } else {
+        // Directly press other characters (lowercase, numbers, symbols)
+        if (char === ' ') {
+          await page.keyboard.press('Space'); // Handle spaces explicitly
+        } else {
+          await page.keyboard.press(char);
+        }
+      }
+
+      // Randomly vary typing speed to mimic human behavior
+      const typingSpeed = Math.random() * 150 + 50;
+      await page.waitForTimeout(typingSpeed);
+  
+      // Randomly add "thinking pauses" after some words
+      if (char === ' ' && Math.random() < 0.2) {
+        const thinkingPause = Math.random() * 1500 + 500;
         await page.waitForTimeout(thinkingPause);
       }
+  
+      // Randomly simulate small typing errors and corrections
+      if (Math.random() < 0.08) { // 8% chance of error
+        const errorChar = String.fromCharCode(Math.floor(Math.random() * 26) + 97); // Random lowercase letter
+        await page.type(selector, errorChar);  // Type incorrect character
+        await page.waitForTimeout(typingSpeed / 0.8); // Short delay after mistake
+        await page.keyboard.press('Backspace'); // Correct the mistake
+      }
+  
+      // Randomly add a longer pause to mimic thinking (more rarely)
+      if (Math.random() < 0.1) {
+        const longPause = Math.random() * 2000 + 500;
+        await page.waitForTimeout(longPause);
+      }
     }
-    console.log(`Finished typing. Waiting for additional delay`);
+    
+    // Extra delay after finishing typing to simulate human thinking or reviewing
+    const finishDelay = Math.random() * 3000 + 1000;
+    console.log(`Finished typing. Waiting for additional mouse delay of ${finishDelay} ms`);
+    
+    // Simulate random mouse movement during the pause
+    await this.randomMouseMovement(page, finishDelay);
+  };
+
+    // Function to simulate random mouse movement during thinking pauses
+  randomMouseMovement = async (page, pauseDuration) => {
+    const startX = Math.random() * 500 + 100; // Start somewhere within a random range
+    const startY = Math.random() * 300 + 100;
+
+    // Move the mouse to the initial position
+    await page.mouse.move(startX, startY);
+
+    const moveSteps = Math.floor(Math.random() * 5 + 3); // Simulate 3 to 5 movements
+    const stepDelay = pauseDuration / moveSteps; // Divide the pause duration for smooth movement
+
+    for (let i = 0; i < moveSteps; i++) {
+      const randomX = startX + Math.random() * 100 - 50; // Move randomly within a small range
+      const randomY = startY + Math.random() * 100 - 50;
+      await page.mouse.move(randomX, randomY);
+      await page.waitForTimeout(stepDelay); // Wait a bit before the next movement
+    }
   };
 
   // clean text
