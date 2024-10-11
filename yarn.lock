@@ -4997,6 +4997,16 @@ wildcard@^2.0.0:
   resolved "https://registry.yarnpkg.com/wildcard/-/wildcard-2.0.1.tgz#5ab10d02487198954836b6349f74fff961e10f67"
   integrity sha512-CC1bOL87PIWSBhDcTrdeLo6eGT7mCFtrg0uIJtqJUFyK+eJnzl8A1niH56uu7KMa5XFrtiV+AQuHO3n7DsHnLQ==
 
+wink-eng-lite-web-model@^1.8.0:
+  version "1.8.0"
+  resolved "https://registry.yarnpkg.com/wink-eng-lite-web-model/-/wink-eng-lite-web-model-1.8.0.tgz#194530f4d2da4ac8d696c4b6582e38114b545bd6"
+  integrity sha512-PlSaw2tzQ2SrKYEaH6AbxIUCFnQ9H7FeReVluV9O9VpgfYYa+urttUoAgzDrVujeMkJtACAIY8eFIkQgbEMpPg==
+
+wink-nlp@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/wink-nlp/-/wink-nlp-2.3.0.tgz#6b709bd49850ac1283b5e63b12ff1547dc19b9d8"
+  integrity sha512-NcMmlsJavRZgaV4dAjsOQPuXG4v3yLRRssEibfx41lhmwTTOCaQGW7czNC73bDKCq7q4vqGTjX3/MFhK3I76TA==
+
 word-wrap@^1.2.5:
   version "1.2.5"
   resolved "https://registry.yarnpkg.com/word-wrap/-/word-wrap-1.2.5.tgz#d2c45c6dd4fbce621a66f136cbe328afd0410b34"
