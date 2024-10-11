@@ -13,7 +13,7 @@ async function executeTasks() {
     let round = i;
     coreLogic.task(round);
     // await sleep(50000);
-    coreLogic.auditTask(round - 1);
+    // coreLogic.auditTask(round - 1);
     await sleep(delay);
 
     console.log('stopping searcher at round', round);
