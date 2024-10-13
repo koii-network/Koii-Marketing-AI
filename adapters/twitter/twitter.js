@@ -424,20 +424,20 @@ class Twitter extends Adapter {
     }
   };
 
-  humanType = async (page, selector, text, genText) => {
-    let textList = [
-        `We got ${genText} before we got Koii mainnet`,
-        `I can't believe we got ${genText} before Koii launched.`,
-        `Wow, ${genText} is dope and all, but I want Koii.`,
-        `Wen ${genText}, Koii launch?`
-    ]
-    const randomIndex = Math.floor(Math.random() * textList.length);
+  humanType = async (page, selector, genText) => {
+    // let textList = [
+    //     `We got ${genText} before we got Koii mainnet`,
+    //     `I can't believe we got ${genText} before Koii launched.`,
+    //     `Wow, ${genText} is dope and all, but I want Koii.`,
+    //     `Wen ${genText}, Koii launch?`
+    // ]
+    // const randomIndex = Math.floor(Math.random() * textList.length);
 
     // Get the random element from the array
-    text = textList[randomIndex];
+    // text = textList[randomIndex];
     await page.click(selector); // Focus on the input field
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
+    for (let i = 0; i < genText.length; i++) {
+      const char = genText[i];
 
       // await page.type(selector, char);
       if (char === char.toUpperCase() && char.match(/[a-zA-Z]/)) {
@@ -822,7 +822,7 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.click(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(6000));
-      await this.humanType(commentPage, writeSelector, this.comment, genText);
+      await this.humanType(commentPage, writeSelector, genText);
       await commentPage.waitForTimeout(await this.randomDelay(8000));
       // button for post the comment
       await commentPage.evaluate(async () => {
@@ -930,6 +930,7 @@ class Twitter extends Adapter {
   let output = templates[Math.floor(Math.random() * (templates.length - 1))];
       // output = nlp(output);
   // let output = result;
+  console.log('genText returning ', output)
   return output;
 }
 
@@ -1029,7 +1030,7 @@ selectSnippet (snippetSelector, textToRead) {
         options[Math.floor(Math.random() * options.length)];
       const HOURS_IN_MS = 60 * 60 * 1000;
 
-      const randomHours = getRandomHours(HOURS_OPTIONS);
+      const randomHours = getRandomHours(HOURS_OPTIONS); // TODO : should not be random hrs
       const rangeInMilliseconds = randomHours * HOURS_IN_MS;
 
       if (currentTimeStamp - Timestamp < rangeInMilliseconds) {
@@ -1116,10 +1117,10 @@ selectSnippet (snippetSelector, textToRead) {
               currentTimeStamp,
               getCommentTimeStamp,
             );
-
-            if (!getCommentBool) {
-              return;
-            }
+            console.log('commentBool is ', getCommentBool)
+            // if (!getCommentBool) {
+            //   return;
+            // }
           }
           await new Promise(resolve => setTimeout(resolve, 2000));
           try {

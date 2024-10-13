@@ -110,7 +110,7 @@ class TwitterTask {
     let keyword;
     let search;
     try {
-      let searchList = [ 'depin', '@al_from_koii', 'koii', 'AI' ]
+      let searchList = [ 'depin', 'AI' ]
       // pick random search term
       search = searchList[Math.floor(Math.random() * searchList.length)];
       const submitterAccountKeyPair = (
