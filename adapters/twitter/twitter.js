@@ -889,7 +889,7 @@ class Twitter extends Adapter {
   let snippetSelectors = [
       '#Person',
       '#Possessive #Noun',
-      '#Preposition #Noun',
+      '#Preposition #ProperNoun',
       '#ProperNoun',
       '#FirstName',
       '#Adjective #Noun #Noun',
@@ -1104,7 +1104,7 @@ selectSnippet (snippetSelector, textToRead) {
 
         // loop the articles
         for (const item of items) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1000)); // @soma Nice delay timer, never thought of doing it this way
           const getCommentTimeStamp = await this.commentsDB.getTimestamp(
             'LAST_COMMENT_MADE',
           );
@@ -1118,9 +1118,12 @@ selectSnippet (snippetSelector, textToRead) {
               getCommentTimeStamp,
             );
             console.log('commentBool is ', getCommentBool)
-            // if (!getCommentBool) {
-            //   return;
-            // }
+            if (!getCommentBool) {
+              // @soma not sure what you're doing here
+              
+              console.log('wait 10s after comment before continuing')
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
           }
           await new Promise(resolve => setTimeout(resolve, 2000));
           try {
