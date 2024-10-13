@@ -927,9 +927,9 @@ class Twitter extends Adapter {
       `Wow, ${result} is dope and all, but I want Koii.`,
       `Wen ${result}, Koii launch?`
   ];
-  // let output = templates[Math.floor(Math.random() * (templates.length - 1))];
+  let output = templates[Math.floor(Math.random() * (templates.length - 1))];
       // output = nlp(output);
-  let output = result;
+  // let output = result;
   return output;
 }
 
