@@ -91,7 +91,7 @@ class Twitter extends Adapter {
         userDataDir: userDataDir,
         headless: false,
         userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+         'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
         args: [
           '--aggressive-cache-discard',
           '--disable-cache',
@@ -106,11 +106,25 @@ class Twitter extends Adapter {
       });
       console.log('Step: Open new page');
       this.page = await this.browser.newPage();
-      await this.page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      );
+      // Emulate a specific mobile device, e.g., iPhone X
+      const iPhone = stats.puppeteer.devices['iPhone X'];
+      await this.page.emulate(iPhone);
+
+      // Set a mobile viewport size
+      await this.page.setViewport({
+        width: 375,
+        height: 812,
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      });
+
+      // Set a mobile user agent
+      await this.page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1');
+      console.log('Setup as mobile device complete');
+
       await this.page.waitForTimeout(await this.randomDelay(3000));
-      await this.page.setViewport({ width: 1920, height: 1080 });
+      // await this.page.setViewport({ width: 1920, height: 1080 });
       await this.page.waitForTimeout(await this.randomDelay(3000));
       await this.twitterLogin(this.page, this.browser);
       return true;
@@ -517,6 +531,17 @@ class Twitter extends Adapter {
 
   getTheCommentDetails = async (url, commentText, currentBrowser) => {
     const commentPage = await currentBrowser.newPage();
+    // Set a mobile viewport size
+    await commentPage.setViewport({
+      width: 375,
+      height: 812,
+      isMobile: true,
+      hasTouch: true,
+      deviceScaleFactor: 2,
+    });
+
+    // Set a mobile user agent
+    await commentPage.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1');
     await commentPage.goto(url);
     await commentPage.waitForTimeout(await this.randomDelay(8000));
 
@@ -710,9 +735,20 @@ class Twitter extends Adapter {
 
       // open comment page
       const commentPage = await currentBrowser.newPage();
+      commentPage.setViewport({
+        width: 375,
+        height: 812,
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      });
+
+      // Set a mobile user agent
+      await commentPage.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1');
+
       const getNewPageUrl = `https://x.com/any/status/${tweetId}`;
-      await commentPage.goto(getNewPageUrl);
       console.log('go to tweets:', getNewPageUrl);
+      await commentPage.goto(getNewPageUrl);
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.evaluate(() => window.focus());
       await commentPage.bringToFront();
@@ -1066,10 +1102,6 @@ selectSnippet (snippetSelector, textToRead) {
       console.log('fetching list for ', url);
       // Go to the hashtag page
       await this.page.waitForTimeout(await this.randomDelay(6000));
-      // await this.page.setViewport({ width: 1024, height: 4000 });
-      const screenWidth = await this.page.evaluate(() => window.screen.width);
-      const screenHeight = await this.page.evaluate(() => window.screen.height);
-      await this.page.setViewport({ width: screenWidth, height: screenHeight });
       await this.page.goto(url);
       await this.page.waitForTimeout(await this.randomDelay(8000));
 
