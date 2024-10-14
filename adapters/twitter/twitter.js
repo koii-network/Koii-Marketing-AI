@@ -802,14 +802,15 @@ class Twitter extends Adapter {
         }
 
         await commentPage.waitForTimeout(await this.randomDelay(3000));
-        await this.moveMouseSmoothly(
-          commentPage,
-          buttonBox.x + buttonBox.width / 2,
-          buttonBox.y + buttonBox.height / 2,
-        );
+        // No movement needed for the like button in mobile view
+        // await this.moveMouseSmoothly(
+        //   commentPage,
+        //   buttonBox.x + buttonBox.width / 2,
+        //   buttonBox.y + buttonBox.height / 2,
+        // );
         await commentPage.mouse.click(
-          buttonBox.x + buttonBox.width / 2,
-          buttonBox.y + buttonBox.height / 2,
+          buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
+          buttonBox.y + buttonBox.height / 2 + + this.getRandomOffset(5),
         );
         console.log('Button clicked successfully.');
       } else {
@@ -844,8 +845,41 @@ class Twitter extends Adapter {
       console.log('genText', genText);
       console.log('End genText *******************');
       await commentPage.waitForTimeout(await this.randomDelay(3000));
+      const replybuttonSelector = 'button[data-testid="reply"]';  // Adjust this for the reply button
+      await commentPage.waitForSelector(replybuttonSelector, { timeout: 10000 });
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      // Scroll the button into view
+      await commentPage.evaluate(replybuttonSelector => {
+        const element = document.querySelector(replybuttonSelector);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, replybuttonSelector);
+
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      // Find the button
+      const replyButton = await commentPage.$(replybuttonSelector);
+      if (replyButton) {
+        const replybuttonBox = await replyButton.boundingBox();
+        
+        if (replybuttonBox) {
+          // Click around the button with random offsets
+          await commentPage.mouse.click(
+            replybuttonBox.x + replybuttonBox.width / 2 + this.getRandomOffset(5),
+            replybuttonBox.y + replybuttonBox.height / 2 + this.getRandomOffset(5)
+          );
+        } else {
+          console.log('Button is not visible.');
+        }
+      } else {
+        console.log('Reply button not found.');
+      }
+
+      await commentPage.waitForTimeout(await this.randomDelay(3000000));
       const writeSelector =
-        'div[data-testid="tweetTextarea_0RichTextInputContainer"]';
+        'div[data-testid="tweetTextarea_0"]';
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.evaluate(writeSelector => {
         const element = document.querySelector(writeSelector);
@@ -914,6 +948,10 @@ class Twitter extends Adapter {
       );
     }
   };
+
+getRandomOffset = (range) => {
+  return Math.floor(Math.random() * (range * 2 + 1)) - range;
+};
 /*
     @genText
     Receives a blurb to read, then returns a random koii-themed blurb
