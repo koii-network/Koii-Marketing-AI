@@ -1235,10 +1235,10 @@ selectSnippet (snippetSelector, textToRead) {
       const startX = 150; // Starting X position (you can adjust this)
       const startY = 500; // Starting Y position (you can adjust this)
       const endX = 250;   // Ending X position (stays same to slide vertically)
-      const endY = 300;   // Ending Y position (adjust for length of swipe)
+      const endY = 200;   // Ending Y position (adjust for length of swipe)
 
       // Call the function to perform the slow slide
-      await this.slowFingerSlide(this.page, startX, startY, endX, endY, 7, 20);  // 30 steps, 50ms delay
+      await this.slowFingerSlide(this.page, startX, startY, endX, endY, 15, 10);  // 30 steps, 50ms delay
 
       let i = 0;
       while (true) {
