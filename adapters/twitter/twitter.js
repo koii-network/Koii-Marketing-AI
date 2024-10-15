@@ -525,6 +525,7 @@ class Twitter extends Adapter {
     return text.replace(/\s+/g, '').trim();
   };
 
+  // TODO: Re-write the getTheCommentDetails function
   getTheCommentDetails = async (url, commentText, currentBrowser) => {
     const commentPage = await currentBrowser.newPage();
     // Set a mobile viewport size
@@ -729,43 +730,60 @@ class Twitter extends Adapter {
       const hash = bcrypt.hashSync(originData, salt);
       await currentPage.waitForTimeout(await this.randomDelay(1500));
 
-      // open comment page
-      const commentPage = await currentBrowser.newPage();
-      commentPage.setViewport({
-        width: 390,
-        height: 812,
-        isMobile: true,
-        hasTouch: true,
-        deviceScaleFactor: 2,
-      });
+      // Define the selector for the search input field
+      const articlesSelector = 'div[data-testid="tweetText"]';
 
-      // Set a mobile user agent
-      await commentPage.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1');
+      // Wait for the input element to be visible
+      await currentPage.waitForSelector(articlesSelector, { visible: true });
 
-      const getNewPageUrl = `https://x.com/any/status/${tweetId}`;
-      console.log('go to tweets:', getNewPageUrl);
-      await commentPage.goto(getNewPageUrl);
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
-      await commentPage.evaluate(() => window.focus());
-      await commentPage.bringToFront();
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
+      // Scroll the articles into view
+      await currentPage.evaluate(articlesSelector => {
+        const element = document.querySelector(articlesSelector); // Get the first matching element
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, articlesSelector);
+      
+      await currentPage.waitForTimeout(await this.randomDelay(1000));
+
+      const articlesButton = await currentPage.$(articlesSelector);
+
+      if (articlesButton) {
+        const inputBox = await articlesButton.boundingBox();
+
+        if (inputBox) {
+          // Simulate a click on the input field with random offsets
+          await currentPage.mouse.click(
+            inputBox.x + inputBox.width / 2 + this.getRandomOffset(20),
+            inputBox.y + inputBox.height / 2 + this.getRandomOffset(2)
+          );
+
+          console.log('article clicked successfully, continue to comment and like.');
+        } else {
+          console.log('article bounding box not available.');
+        }
+      } else {
+        console.log('article not found.');
+      }
+
+      await currentPage.waitForTimeout(await this.randomDelay(3000));
 
       // This is for the like button
       const buttonSelector = 'button[data-testid="like"]';
-      await commentPage.waitForSelector(buttonSelector, { timeout: 10000 });
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
-      await commentPage.evaluate(buttonSelector => {
+      await currentPage.waitForSelector(buttonSelector, { timeout: 10000 });
+      await currentPage.waitForTimeout(await this.randomDelay(1000));
+      await currentPage.evaluate(buttonSelector => {
         const element = document.querySelector(buttonSelector);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, buttonSelector);
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
+      await currentPage.waitForTimeout(await this.randomDelay(1000));
 
-      const likeButton = await commentPage.$(buttonSelector);
+      const likeButton = await currentPage.$(buttonSelector);
       const buttonBox = await likeButton.boundingBox();
 
-      const isButtonVisible = await commentPage.evaluate(buttonSelector => {
+      const isButtonVisible = await currentPage.evaluate(buttonSelector => {
         const element = document.querySelector(buttonSelector);
         if (element) {
           const { offsetWidth, offsetHeight } = element;
@@ -779,11 +797,11 @@ class Twitter extends Adapter {
         return false;
       }, buttonSelector);
 
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
+      await currentPage.waitForTimeout(await this.randomDelay(1000));
 
       if (buttonBox && isButtonVisible) {
         const unlikeButton = 'button[data-testid="unlike"]';
-        const isUnlike = await commentPage.evaluate(unlikeButton => {
+        const isUnlike = await currentPage.evaluate(unlikeButton => {
           const element = document.querySelector(unlikeButton);
           return element && element.getAttribute('data-testid') === 'unlike';
         }, unlikeButton);
@@ -792,18 +810,16 @@ class Twitter extends Adapter {
           console.log(
             'Post is already liked (unlike button present). No action taken.',
           );
-          await commentPage.close();
-          return data;
         }
 
-        await commentPage.waitForTimeout(await this.randomDelay(1000));
+        await currentPage.waitForTimeout(await this.randomDelay(1000));
         // No movement needed for the like button in mobile view
         // await this.moveMouseSmoothly(
         //   commentPage,
         //   buttonBox.x + buttonBox.width / 2,
         //   buttonBox.y + buttonBox.height / 2,
         // );
-        await commentPage.mouse.click(
+        await currentPage.mouse.click(
           buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
           buttonBox.y + buttonBox.height / 2 + + this.getRandomOffset(5),
         );
@@ -814,52 +830,56 @@ class Twitter extends Adapter {
         );
       }
 
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
+      await currentPage.waitForTimeout(await this.randomDelay(3000));
 
       // check if already comments or not
       // check if comment is posted or not if posted then get the details
-      const checkComments = await this.getTheCommentDetails(
-        getNewPageUrl,
-        this.comment,
-        currentBrowser,
-      );
+      // TODO: Re-write the getTheCommentDetails function
+      // const checkComments = await this.getTheCommentDetails(
+      //   getNewPageUrl,
+      //   this.comment,
+      //   currentBrowser,
+      // );
 
-      if (
-        checkComments != null &&
-        typeof checkComments === 'object' &&
-        Object.keys(checkComments).length > 0
-      ) {
-        await commentPage.close();
-        return data;
-      }
+      // if (
+      //   checkComments != null &&
+      //   typeof checkComments === 'object' &&
+      //   Object.keys(checkComments).length > 0
+      // ) {
+      //   await currentPage.close();
+      //   return data;
+      // }
 
       // write a comment and post
       console.log('Start genText *******************');
       let genText = await this.genText(tweets_content);
       console.log('genText', genText);
       console.log('End genText *******************');
-      const replybuttonSelector = 'button[data-testid="reply"]';  // Adjust this for the reply button
-      await commentPage.waitForSelector(replybuttonSelector, { timeout: 10000 });
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
+      console.log('target article:' + tweets_content + tweetId);
 
-      // Scroll the button into view
-      await commentPage.evaluate(replybuttonSelector => {
-        const element = document.querySelector(replybuttonSelector);
+      const replybuttonSelector = 'button[data-testid="reply"]';  // Selector for the reply button
+      await currentPage.waitForSelector(replybuttonSelector, { timeout: 10000 });
+      await currentPage.waitForTimeout(await this.randomDelay(2000));
+      
+      // Scroll the first reply button into view
+      await currentPage.evaluate(replybuttonSelector => {
+        const element = document.querySelector(replybuttonSelector); // Get the first matching element
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, replybuttonSelector);
-
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
-
-      // Find the button
-      const replyButton = await commentPage.$(replybuttonSelector);
+      
+      await currentPage.waitForTimeout(await this.randomDelay(1000));
+      
+      // Find the first reply button
+      const replyButton = await currentPage.$(replybuttonSelector); // Gets the first instance of the reply button
+      
       if (replyButton) {
         const replybuttonBox = await replyButton.boundingBox();
         
         if (replybuttonBox) {
           // Click around the button with random offsets
-          await commentPage.mouse.click(
+          await currentPage.mouse.click(
             replybuttonBox.x + replybuttonBox.width / 2 + this.getRandomOffset(5),
             replybuttonBox.y + replybuttonBox.height / 2 + this.getRandomOffset(5)
           );
@@ -869,26 +889,27 @@ class Twitter extends Adapter {
       } else {
         console.log('Reply button not found.');
       }
+      
 
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
-      console.log('url change to:' + commentPage.url());
+      await currentPage.waitForTimeout(await this.randomDelay(3000));
+      console.log('url change to:' + currentPage.url());
       const writeSelector = 'textarea[data-testid="tweetTextarea_0"]';  // Updated selector for the text area
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
-      await commentPage.evaluate(writeSelector => {
+      await currentPage.waitForTimeout(await this.randomDelay(1000));
+      await currentPage.evaluate(writeSelector => {
         const element = document.querySelector(writeSelector);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, writeSelector);
-      await commentPage.click(writeSelector);
-      await commentPage.waitForTimeout(await this.randomDelay(2000));
-      await this.humanType(commentPage, writeSelector, genText);
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
+      await currentPage.click(writeSelector);
+      await currentPage.waitForTimeout(await this.randomDelay(2000));
+      await this.humanType(currentPage, writeSelector, genText);
+      await currentPage.waitForTimeout(await this.randomDelay(1000));
       // Wait for the reply button to appear and be ready for interaction
       const tweetButtonSelector = 'button[data-testid="tweetButton"]';
-      await commentPage.waitForSelector(tweetButtonSelector, { visible: true });
+      await currentPage.waitForSelector(tweetButtonSelector, { visible: true });
 
-      const tweetButton = await commentPage.$(tweetButtonSelector);
+      const tweetButton = await currentPage.$(tweetButtonSelector);
 
       if (tweetButton) {
         const buttonBox = await tweetButton.boundingBox();
@@ -900,7 +921,7 @@ class Twitter extends Adapter {
           };
 
           // Simulate a click on the button using mouse.click with random offsets
-          await commentPage.mouse.click(
+          await currentPage.mouse.click(
             buttonBox.x + buttonBox.width / 2 + getRandomOffset(5),
             buttonBox.y + buttonBox.height / 2 + getRandomOffset(5)
           );
@@ -913,7 +934,7 @@ class Twitter extends Adapter {
         console.log('Reply button not found.');
       }
 
-      await commentPage.waitForTimeout(await this.randomDelay(2000));
+      await currentPage.waitForTimeout(await this.randomDelay(2000));
 
       // check if comment is posted or not if posted then get the details
       const getCommentDetailsObject = await this.getTheCommentDetails(
@@ -923,8 +944,8 @@ class Twitter extends Adapter {
       );
 
       // close the comment page
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
-      await commentPage.close();
+      await currentPage.waitForTimeout(await this.randomDelay(3000));
+      await currentPage.close();
 
       if (
         !getCommentDetailsObject ||
@@ -1208,7 +1229,6 @@ selectSnippet (snippetSelector, textToRead) {
       await this.page.waitForTimeout(await this.randomDelay(2000));
       console.log('fetching list for ', this.page.url());
 
-      // await this.page.goto(url);
       await this.page.waitForTimeout(await this.randomDelay(3000));
 
       // Simulate finger sliding (swipe) on the page in mobile mode
@@ -1218,8 +1238,7 @@ selectSnippet (snippetSelector, textToRead) {
       const endY = 300;   // Ending Y position (adjust for length of swipe)
 
       // Call the function to perform the slow slide
-      await this.slowFingerSlide(this.page, startX, startY, endX, endY, 5, 10);  // 30 steps, 50ms delay
-
+      await this.slowFingerSlide(this.page, startX, startY, endX, endY, 7, 20);  // 30 steps, 50ms delay
 
       let i = 0;
       while (true) {
@@ -1266,14 +1285,7 @@ selectSnippet (snippetSelector, textToRead) {
               getCommentTimeStamp,
             );
             console.log('commentBool is ', getCommentBool)
-            if (!getCommentBool) {
-              // @soma not sure what you're doing here
-              
-              console.log('wait 10s after comment before continuing')
-              await new Promise(resolve => setTimeout(resolve, 10000));
-            }
           }
-          await new Promise(resolve => setTimeout(resolve, 2000));
           try {
             // get the current timeStamp
             const currentTimeStamp = await this.getCurrentTimestamp();
@@ -1282,7 +1294,6 @@ selectSnippet (snippetSelector, textToRead) {
               'LAST_COMMENT_MADE',
               currentTimeStamp,
             );
-            await new Promise(resolve => setTimeout(resolve, 1000));
 
             // add the comment on the post
             let data = await this.parseItem(item, url, this.page, this.browser);
