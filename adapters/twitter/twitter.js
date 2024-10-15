@@ -877,9 +877,9 @@ class Twitter extends Adapter {
         console.log('Reply button not found.');
       }
 
-      await commentPage.waitForTimeout(await this.randomDelay(3000000));
-      const writeSelector =
-        'div[data-testid="tweetTextarea_0"]';
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      console.log('url change to:' + commentPage.url());
+      const writeSelector = 'textarea[data-testid="tweetTextarea_0"]';  // Updated selector for the text area
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.evaluate(writeSelector => {
         const element = document.querySelector(writeSelector);
