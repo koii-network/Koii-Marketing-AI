@@ -894,17 +894,35 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(6000));
       await this.humanType(commentPage, writeSelector, genText);
       await commentPage.waitForTimeout(await this.randomDelay(8000));
-      // button for post the comment
-      await commentPage.evaluate(async () => {
-        const button = document.querySelector(
-          'button[data-testid="tweetButtonInline"]',
-        );
-        if (button && !button.disabled) {
-          await button.click();
+      // Wait for the reply button to appear and be ready for interaction
+      const tweetButtonSelector = 'button[data-testid="tweetButton"]';
+      await commentPage.waitForSelector(tweetButtonSelector, { visible: true });
+
+      const tweetButton = await commentPage.$(tweetButtonSelector);
+
+      if (tweetButton) {
+        const buttonBox = await tweetButton.boundingBox();
+
+        if (buttonBox) {
+          // Function to add a random offset to simulate human-like clicking
+          const getRandomOffset = (range) => {
+            return Math.floor(Math.random() * (range * 2 + 1)) - range;
+          };
+
+          // Simulate a click on the button using mouse.click with random offsets
+          await commentPage.mouse.click(
+            buttonBox.x + buttonBox.width / 2 + getRandomOffset(5),
+            buttonBox.y + buttonBox.height / 2 + getRandomOffset(5)
+          );
+
+          console.log('Reply button clicked successfully!');
         } else {
-          console.log('cant click the button');
+          console.log('Button bounding box not available.');
         }
-      });
+      } else {
+        console.log('Reply button not found.');
+      }
+
       await commentPage.waitForTimeout(await this.randomDelay(6000));
 
       // check if comment is posted or not if posted then get the details
