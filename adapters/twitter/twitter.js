@@ -780,7 +780,7 @@ class Twitter extends Adapter {
       if (scrollAmount <= 0) break;
 
       // Perform the slow finger slide to scroll
-      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 10, 25);
+      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 50, 20);
       await currentPage.waitForTimeout(await this.randomDelay(2000));
       // Re-check the button's position after scrolling
       buttonBox = await likeButton.boundingBox();
@@ -1009,8 +1009,21 @@ class Twitter extends Adapter {
       //   return data;
       // }
 
-      // click on comment button
-      await this.clickCommentButton(currentPage, tweets_content);
+      // check comment cooldown
+      const currentTimeStamp = await this.getCurrentTimestamp(); // Fetch the current timestamp
+      let isTimestampValid = await this.checkCommentTimestamp(currentTimeStamp);
+      console.log('isTimestampValid', isTimestampValid);
+      if (isTimestampValid) {
+        // Click the comment button if the timestamp check is valid
+        await this.clickCommentButton(currentPage, tweets_content);
+
+        // Store the current timestamp as the new 'LAST_COMMENT_MADE'
+        this.commentsDB.createTimestamp('LAST_COMMENT_MADE', currentTimeStamp);
+
+        console.log('Comment action performed, and timestamp updated.');
+      } else {
+        console.log('No comment action was taken due to recent activity.');
+      }
 
       // TODO: Rewrite the getTheCommentDetails function
       // check if comment is posted or not if posted then get the details
@@ -1190,24 +1203,57 @@ class Twitter extends Adapter {
     return currentTimeStamp;
   };
 
-  checkCommentTimestamp = (currentTimeStamp, Timestamp) => {
+  checkCommentTimestamp = async currentTimeStamp => {
     try {
-      const HOURS_OPTIONS = [0.5];
-      const getRandomHours = options =>
-        options[Math.floor(Math.random() * options.length)];
-      const HOURS_IN_MS = 60 * 60 * 1000;
+      // Retrieve the last comment timestamp from the database (in seconds)
+      const lastCommentTimestamp = await this.commentsDB.getTimestamp(
+        'LAST_COMMENT_MADE',
+      );
+      if (!lastCommentTimestamp) {
+        console.log('No previous comment timestamp found in the database.');
+        return true; // No timestamp, allow the new comment
+      }
 
-      const randomHours = getRandomHours(HOURS_OPTIONS); // TODO : should not be random hrs
-      const rangeInMilliseconds = randomHours * HOURS_IN_MS;
+      // Convert both timestamps from seconds to milliseconds for comparison
+      const lastTimestamp = lastCommentTimestamp * 1000;
+      const currentTimestamp = currentTimeStamp * 1000;
 
-      if (currentTimeStamp - Timestamp < rangeInMilliseconds) {
-        console.log(`Timestamp is less than ${randomHours} hours old`);
+      console.log(`Last comment timestamp: ${lastTimestamp}`);
+      console.log(`Current timestamp: ${currentTimestamp}`);
+
+      // Check if the timestamps are valid numbers
+      if (isNaN(lastTimestamp) || isNaN(currentTimestamp)) {
+        console.log('Invalid timestamp detected.');
+        return false; // Avoid proceeding if timestamps are invalid
+      }
+
+      // Define the random cooldown range: 30 minutes ± 5 minutes (25 to 35 minutes) in milliseconds
+      const MIN_COOLDOWN_IN_MS = 25 * 60 * 1000; // 25 minutes in milliseconds
+      const MAX_COOLDOWN_IN_MS = 35 * 60 * 1000; // 35 minutes in milliseconds
+
+      // Generate a random cooldown between 25 and 35 minutes
+      const randomCooldown =
+        Math.floor(
+          Math.random() * (MAX_COOLDOWN_IN_MS - MIN_COOLDOWN_IN_MS + 1),
+        ) + MIN_COOLDOWN_IN_MS;
+
+      // Calculate the difference between the current time and the last comment time
+      const timeDifference = currentTimestamp - lastTimestamp;
+
+      // If the time difference is less than or equal to the random cooldown, skip the comment
+      if (timeDifference <= randomCooldown) {
+        console.log(
+          `Last comment was made within the cooldown period of ${
+            randomCooldown / (60 * 1000)
+          } minutes, skipping comment action.`,
+        );
         return false;
       }
+      // If the last comment is older than the allowed range, allow the new comment
       return true;
     } catch (error) {
-      console.log(`Some error in the checkCommentTimestamp :: `, error);
-      return false;
+      console.log(`Error in checkCommentTimestamp: `, error);
+      return false; // Fail-safe: don't proceed with the comment action
     }
   };
 
@@ -1329,16 +1375,7 @@ class Twitter extends Adapter {
         for (const item of items) {
           await new Promise(resolve => setTimeout(resolve, 1000)); // @soma Nice delay timer, never thought of doing it this way
           try {
-            // get the current timeStamp
-            const currentTimeStamp = await this.getCurrentTimestamp();
-            // store comments timestamp in current timestamp
-            this.commentsDB.createTimestamp(
-              'LAST_COMMENT_MADE',
-              currentTimeStamp,
-            );
             await this.page.waitForTimeout(await this.randomDelay(2000));
-            // Call the function to perform the slow slide
-            // await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 10); // 15 steps, 10ms delay
             // add the comment on the post
             let data = await this.parseItem(item, url, this.page, this.browser);
 
