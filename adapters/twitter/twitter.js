@@ -91,7 +91,7 @@ class Twitter extends Adapter {
         userDataDir: userDataDir,
         headless: false,
         userAgent:
-         'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+          'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
         args: [
           '--aggressive-cache-discard',
           '--disable-cache',
@@ -120,7 +120,9 @@ class Twitter extends Adapter {
       });
 
       // Set a mobile user agent
-      await this.page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1');
+      await this.page.setUserAgent(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+      );
       console.log('Setup as mobile device complete');
       // await this.page.setViewport({ width: 1920, height: 1080 });
       await this.page.waitForTimeout(await this.randomDelay(3000));
@@ -538,7 +540,9 @@ class Twitter extends Adapter {
     });
 
     // Set a mobile user agent
-    await commentPage.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1');
+    await commentPage.setUserAgent(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+    );
     await commentPage.goto(url);
     await commentPage.waitForTimeout(await this.randomDelay(3000));
 
@@ -728,22 +732,13 @@ class Twitter extends Adapter {
       const saltRounds = 10;
       const salt = bcrypt.genSaltSync(saltRounds);
       const hash = bcrypt.hashSync(originData, salt);
+      console.log('target article:' + tweets_content + tweetId);
       await currentPage.waitForTimeout(await this.randomDelay(1500));
 
       // Define the selector for the search input field
       const articlesSelector = 'div[data-testid="tweetText"]';
-
       // Wait for the input element to be visible
       await currentPage.waitForSelector(articlesSelector, { visible: true });
-
-      // Scroll the articles into view
-      await currentPage.evaluate(articlesSelector => {
-        const element = document.querySelector(articlesSelector); // Get the first matching element
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, articlesSelector);
-      
       await currentPage.waitForTimeout(await this.randomDelay(1000));
 
       const articlesButton = await currentPage.$(articlesSelector);
@@ -755,10 +750,12 @@ class Twitter extends Adapter {
           // Simulate a click on the input field with random offsets
           await currentPage.mouse.click(
             inputBox.x + inputBox.width / 2 + this.getRandomOffset(20),
-            inputBox.y + inputBox.height / 2 + this.getRandomOffset(2)
+            inputBox.y + inputBox.height / 2 + this.getRandomOffset(2),
           );
 
-          console.log('article clicked successfully, continue to comment and like.');
+          console.log(
+            'article clicked successfully, continue to comment and like.',
+          );
         } else {
           console.log('article bounding box not available.');
         }
@@ -771,14 +768,7 @@ class Twitter extends Adapter {
       // This is for the like button
       const buttonSelector = 'button[data-testid="like"]';
       await currentPage.waitForSelector(buttonSelector, { timeout: 10000 });
-      await currentPage.waitForTimeout(await this.randomDelay(1000));
-      await currentPage.evaluate(buttonSelector => {
-        const element = document.querySelector(buttonSelector);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, buttonSelector);
-      await currentPage.waitForTimeout(await this.randomDelay(1000));
+      await currentPage.waitForTimeout(await this.randomDelay(2000));
 
       const likeButton = await currentPage.$(buttonSelector);
       const buttonBox = await likeButton.boundingBox();
@@ -810,23 +800,23 @@ class Twitter extends Adapter {
           console.log(
             'Post is already liked (unlike button present). No action taken.',
           );
+        } else {
+          await currentPage.waitForTimeout(await this.randomDelay(1000));
+          // No movement needed for the like button in mobile view
+          // await this.moveMouseSmoothly(
+          //   commentPage,
+          //   buttonBox.x + buttonBox.width / 2,
+          //   buttonBox.y + buttonBox.height / 2,
+          // );
+          await currentPage.mouse.click(
+            buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
+            buttonBox.y + buttonBox.height / 2 + +this.getRandomOffset(5),
+          );
+          console.log('Like button clicked successfully.');
         }
-
-        await currentPage.waitForTimeout(await this.randomDelay(1000));
-        // No movement needed for the like button in mobile view
-        // await this.moveMouseSmoothly(
-        //   commentPage,
-        //   buttonBox.x + buttonBox.width / 2,
-        //   buttonBox.y + buttonBox.height / 2,
-        // );
-        await currentPage.mouse.click(
-          buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
-          buttonBox.y + buttonBox.height / 2 + + this.getRandomOffset(5),
-        );
-        console.log('Button clicked successfully.');
       } else {
         console.error(
-          'Button is not visible, disabled, or bounding box is null. Check for overlaps or state.',
+          'Like button is not visible, disabled, or bounding box is null. Check for overlaps or state.',
         );
       }
 
@@ -855,33 +845,28 @@ class Twitter extends Adapter {
       let genText = await this.genText(tweets_content);
       console.log('genText', genText);
       console.log('End genText *******************');
-      console.log('target article:' + tweets_content + tweetId);
 
-      const replybuttonSelector = 'button[data-testid="reply"]';  // Selector for the reply button
-      await currentPage.waitForSelector(replybuttonSelector, { timeout: 10000 });
+      const replybuttonSelector = 'button[data-testid="reply"]'; // Selector for the reply button
+      await currentPage.waitForSelector(replybuttonSelector, {
+        timeout: 10000,
+      });
       await currentPage.waitForTimeout(await this.randomDelay(2000));
-      
-      // Scroll the first reply button into view
-      await currentPage.evaluate(replybuttonSelector => {
-        const element = document.querySelector(replybuttonSelector); // Get the first matching element
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, replybuttonSelector);
-      
-      await currentPage.waitForTimeout(await this.randomDelay(1000));
-      
+
       // Find the first reply button
       const replyButton = await currentPage.$(replybuttonSelector); // Gets the first instance of the reply button
-      
+
       if (replyButton) {
         const replybuttonBox = await replyButton.boundingBox();
-        
+
         if (replybuttonBox) {
           // Click around the button with random offsets
           await currentPage.mouse.click(
-            replybuttonBox.x + replybuttonBox.width / 2 + this.getRandomOffset(5),
-            replybuttonBox.y + replybuttonBox.height / 2 + this.getRandomOffset(5)
+            replybuttonBox.x +
+              replybuttonBox.width / 2 +
+              this.getRandomOffset(5),
+            replybuttonBox.y +
+              replybuttonBox.height / 2 +
+              this.getRandomOffset(5),
           );
         } else {
           console.log('Button is not visible.');
@@ -889,18 +874,11 @@ class Twitter extends Adapter {
       } else {
         console.log('Reply button not found.');
       }
-      
 
       await currentPage.waitForTimeout(await this.randomDelay(3000));
-      console.log('url change to:' + currentPage.url());
-      const writeSelector = 'textarea[data-testid="tweetTextarea_0"]';  // Updated selector for the text area
+      console.log('change to post page:' + currentPage.url());
+      const writeSelector = 'textarea[data-testid="tweetTextarea_0"]'; // Updated selector for the text area
       await currentPage.waitForTimeout(await this.randomDelay(1000));
-      await currentPage.evaluate(writeSelector => {
-        const element = document.querySelector(writeSelector);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, writeSelector);
       await currentPage.click(writeSelector);
       await currentPage.waitForTimeout(await this.randomDelay(2000));
       await this.humanType(currentPage, writeSelector, genText);
@@ -916,14 +894,14 @@ class Twitter extends Adapter {
 
         if (buttonBox) {
           // Function to add a random offset to simulate human-like clicking
-          const getRandomOffset = (range) => {
+          const getRandomOffset = range => {
             return Math.floor(Math.random() * (range * 2 + 1)) - range;
           };
 
           // Simulate a click on the button using mouse.click with random offsets
           await currentPage.mouse.click(
             buttonBox.x + buttonBox.width / 2 + getRandomOffset(5),
-            buttonBox.y + buttonBox.height / 2 + getRandomOffset(5)
+            buttonBox.y + buttonBox.height / 2 + getRandomOffset(5),
           );
 
           console.log('Reply button clicked successfully!');
@@ -934,25 +912,48 @@ class Twitter extends Adapter {
         console.log('Reply button not found.');
       }
 
-      await currentPage.waitForTimeout(await this.randomDelay(2000));
-
-      // check if comment is posted or not if posted then get the details
-      const getCommentDetailsObject = await this.getTheCommentDetails(
-        getNewPageUrl,
-        this.comment,
-        currentBrowser,
-      );
-
-      // close the comment page
       await currentPage.waitForTimeout(await this.randomDelay(3000));
-      await currentPage.close();
 
-      if (
-        !getCommentDetailsObject ||
-        Object.keys(getCommentDetailsObject).length === 0
-      ) {
-        return data;
+      // TODO: Rewrite the getTheCommentDetails function
+      // check if comment is posted or not if posted then get the details
+      // const getCommentDetailsObject = await this.getTheCommentDetails(
+      //   getNewPageUrl,
+      //   this.comment,
+      //   currentBrowser,
+      // );
+
+      // click back button
+      const backButtonSelector = 'button[data-testid="app-bar-back"]';
+
+      // Wait for the back button to appear and be visible
+      await currentPage.waitForSelector(backButtonSelector, { visible: true });
+    
+      // Find the back button
+      const backButton = await currentPage.$(backButtonSelector);
+    
+      if (backButton) {
+        const buttonBox = await backButton.boundingBox();
+    
+        if (buttonBox) {
+          // Function to add a random offset to simulate human-like clicking
+          const getRandomOffset = (range) => {
+            return Math.floor(Math.random() * (range * 2 + 1)) - range;
+          };
+    
+          // Simulate a click on the back button with random offsets
+          await currentPage.mouse.click(
+            buttonBox.x + buttonBox.width / 2 + getRandomOffset(5),
+            buttonBox.y + buttonBox.height / 2 + getRandomOffset(5)
+          );
+    
+          console.log('Back button clicked successfully!');
+        } else {
+          console.log('Back button is not visible.');
+        }
+      } else {
+        console.log('Back button not found.');
       }
+      // await currentPage.close();
 
       if (screen_name && tweet_text) {
         data = {
@@ -965,30 +966,30 @@ class Twitter extends Adapter {
           time_post: time,
           keyword: this.searchTerm,
           hash: hash,
-          commentDetails: getCommentDetailsObject,
+          // commentDetails: getCommentDetailsObject,
         };
       }
       return data;
     } catch (e) {
       console.log(
-        'Filtering advertisement tweets; continuing to the next item :: ',
+        'Something went wrong when comment or like post :: ',
         e,
       );
     }
   };
 
-getRandomOffset = (range) => {
-  return Math.floor(Math.random() * (range * 2 + 1)) - range;
-};
-/*
+  getRandomOffset = range => {
+    return Math.floor(Math.random() * (range * 2 + 1)) - range;
+  };
+  /*
     @genText
     Receives a blurb to read, then returns a random koii-themed blurb
     * textToRead receives a blurb of text 
     @return => templated blurb
 */
 
- genText(textToRead) {
-  let snippetSelectors = [
+  genText(textToRead) {
+    let snippetSelectors = [
       '#Person',
       '#Possessive #Noun',
       '#Preposition #ProperNoun',
@@ -1002,60 +1003,59 @@ getRandomOffset = (range) => {
       '#ProperNoun #Verb',
       '#Verb #ProperNoun',
       '#Adverb #Verb',
-  ]
-  let result = 0;
-  let n = 0;
-  do {
-      let snippet = this.selectSnippet(snippetSelectors[n], textToRead)
+    ];
+    let result = 0;
+    let n = 0;
+    do {
+      let snippet = this.selectSnippet(snippetSelectors[n], textToRead);
       if (snippet.length > 1) {
-          // console.log('found result', snippet, 'with selector ', snippetSelectors[n])
-          if (snippet.length < 20) {
-              result = snippet;
-              // console.log('\r\nfound: "', result ,'" on selector ', n)
-              if (n > 7) result = " you " + result.substring(2) ;
-          }
-      } 
+        // console.log('found result', snippet, 'with selector ', snippetSelectors[n])
+        if (snippet.length < 20) {
+          result = snippet;
+          // console.log('\r\nfound: "', result ,'" on selector ', n)
+          if (n > 7) result = ' you ' + result.substring(2);
+        }
+      }
       n++;
-  } while (result == 0 && n < snippetSelectors.length)
+    } while (result == 0 && n < snippetSelectors.length);
 
-  if (result == 0 ) {
+    if (result == 0) {
       // console.log('\r\nFAILED to find text in ', textToRead)
-      result = "#REDTober"
-  }
+      result = '#REDTober';
+    }
 
-  let templates = [
+    let templates = [
       `We got ${result} before we got Koii mainnet`,
       `I can't believe we got ${result} before Koii launched.`,
       `Wow, ${result} is dope and all, but I want Koii.`,
-      `Wen ${result}, Koii launch?`
-  ];
-  let output = templates[Math.floor(Math.random() * (templates.length - 1))];
-      // output = nlp(output);
-  // let output = result;
-  console.log('genText returning ', output)
-  return output;
-}
+      `Wen ${result}, Koii launch?`,
+    ];
+    let output = templates[Math.floor(Math.random() * (templates.length - 1))];
+    // output = nlp(output);
+    // let output = result;
+    console.log('genText returning ', output);
+    return output;
+  }
 
-/**
-* Attempts to return a sensible snippet from the provided text
-* @param {*} text 
-*/
-selectSnippet (snippetSelector, textToRead) {
-  let doc = nlp(textToRead);
+  /**
+   * Attempts to return a sensible snippet from the provided text
+   * @param {*} text
+   */
+  selectSnippet(snippetSelector, textToRead) {
+    let doc = nlp(textToRead);
 
-  let snippet = doc.match(snippetSelector).text()
-      snippet = nlp(snippet);
-      snippet.nouns().toPlural();
-      snippet.people().normalize();
-      snippet.toLowerCase();
-      snippet.verbs().toGerund();
-      snippet = snippet.text();
-      if (snippet.length < 1) snippet = 0;
-      // console.log( 'selector', snippetSelector, 'found snippet: ', snippet);
+    let snippet = doc.match(snippetSelector).text();
+    snippet = nlp(snippet);
+    snippet.nouns().toPlural();
+    snippet.people().normalize();
+    snippet.toLowerCase();
+    snippet.verbs().toGerund();
+    snippet = snippet.text();
+    if (snippet.length < 1) snippet = 0;
+    // console.log( 'selector', snippetSelector, 'found snippet: ', snippet);
 
-  
-  return snippet;
-}
+    return snippet;
+  }
 
   convertToTimestamp = async dateString => {
     const date = new Date(dateString);
@@ -1180,7 +1180,7 @@ selectSnippet (snippetSelector, textToRead) {
           // Simulate a click on the link using mouse.click with random offsets
           await this.page.mouse.click(
             linkBox.x + linkBox.width / 2 + this.getRandomOffset(5),
-            linkBox.y + linkBox.height / 2 + this.getRandomOffset(5)
+            linkBox.y + linkBox.height / 2 + this.getRandomOffset(5),
           );
 
           console.log('Explore link clicked successfully!');
@@ -1208,10 +1208,12 @@ selectSnippet (snippetSelector, textToRead) {
           // Simulate a click on the input field with random offsets
           await this.page.mouse.click(
             inputBox.x + inputBox.width / 2 + this.getRandomOffset(5),
-            inputBox.y + inputBox.height / 2 + this.getRandomOffset(5)
+            inputBox.y + inputBox.height / 2 + this.getRandomOffset(5),
           );
 
-          console.log('Search input field clicked successfully, ready for typing.');
+          console.log(
+            'Search input field clicked successfully, ready for typing.',
+          );
         } else {
           console.log('Search input field bounding box not available.');
         }
@@ -1228,18 +1230,6 @@ selectSnippet (snippetSelector, textToRead) {
 
       await this.page.waitForTimeout(await this.randomDelay(2000));
       console.log('fetching list for ', this.page.url());
-
-      await this.page.waitForTimeout(await this.randomDelay(3000));
-
-      // Simulate finger sliding (swipe) on the page in mobile mode
-      const startX = 150; // Starting X position (you can adjust this)
-      const startY = 500; // Starting Y position (you can adjust this)
-      const endX = 250;   // Ending X position (stays same to slide vertically)
-      const endY = 200;   // Ending Y position (adjust for length of swipe)
-
-      // Call the function to perform the slow slide
-      await this.slowFingerSlide(this.page, startX, startY, endX, endY, 15, 10);  // 30 steps, 50ms delay
-
       let i = 0;
       while (true) {
         i++;
@@ -1265,27 +1255,13 @@ selectSnippet (snippetSelector, textToRead) {
           );
           return Array.from(elements).map(element => element.outerHTML);
         });
-
-        await this.page.waitForTimeout(await this.randomDelay(2000));
+        console.log('Waiting for tweets loaded');
+        await this.page.waitForTimeout(await this.randomDelay(4500));
         console.log('items :: ', items.length);
 
         // loop the articles
         for (const item of items) {
           await new Promise(resolve => setTimeout(resolve, 1000)); // @soma Nice delay timer, never thought of doing it this way
-          const getCommentTimeStamp = await this.commentsDB.getTimestamp(
-            'LAST_COMMENT_MADE',
-          );
-          console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
-          if (getCommentTimeStamp) {
-            // get the timestamp
-            const currentTimeStamp = await this.getCurrentTimestamp();
-            // check the timestamp if it is less than specific hours
-            const getCommentBool = this.checkCommentTimestamp(
-              currentTimeStamp,
-              getCommentTimeStamp,
-            );
-            console.log('commentBool is ', getCommentBool)
-          }
           try {
             // get the current timeStamp
             const currentTimeStamp = await this.getCurrentTimestamp();
@@ -1294,7 +1270,9 @@ selectSnippet (snippetSelector, textToRead) {
               'LAST_COMMENT_MADE',
               currentTimeStamp,
             );
-
+            await this.page.waitForTimeout(await this.randomDelay(2000));
+            // Call the function to perform the slow slide
+            await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 10); // 15 steps, 10ms delay
             // add the comment on the post
             let data = await this.parseItem(item, url, this.page, this.browser);
 
@@ -1314,15 +1292,8 @@ selectSnippet (snippetSelector, textToRead) {
             }
           } catch (e) {
             console.log(
-              'Filtering advertisement tweets; continuing to the next item.',
+              'Something went wrong while fetching the list of items :: ',
               e,
-            );
-            // get the current timeStamp
-            const currentTimeStamp = await this.getCurrentTimestamp();
-            // store comments timestamp in current timestamp
-            this.commentsDB.createTimestamp(
-              'LAST_COMMENT_MADE',
-              currentTimeStamp,
             );
           }
         }
@@ -1334,8 +1305,9 @@ selectSnippet (snippetSelector, textToRead) {
             this.browser.close();
             break;
           }
-          // Scroll the page for next batch of elements
-          await this.scrollPage(this.page);
+          console.log('No more items found, scrolling down...');
+          // Call the function to perform the slow slide
+          await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 5);
 
           // Optional: wait for a moment to allow new elements to load
           await this.page.waitForTimeout(await this.randomDelay(2000));
@@ -1362,30 +1334,29 @@ selectSnippet (snippetSelector, textToRead) {
     }
   };
 
-
-  slowFingerSlide = async(page, startX, startY, endX, endY, steps, delay) => {
+  slowFingerSlide = async (page, startX, startY, endX, endY, steps, delay) => {
     // Start the touch event at the initial position
     await page.touchscreen.touchStart(startX, startY);
-  
+
     // Calculate the increments for each step
     const xStep = (endX - startX) / steps;
     const yStep = (endY - startY) / steps;
-  
+
     // Move the "finger" step by step, with a delay between each step
     for (let i = 0; i <= steps; i++) {
       const currentX = startX + xStep * i;
       const currentY = startY + yStep * i;
       await page.touchscreen.touchMove(currentX, currentY);
-  
+
       // Wait for a short period to slow down the slide
       await page.waitForTimeout(delay);
     }
-  
+
     // End the touch event
     await page.touchscreen.touchEnd();
-  
+
     console.log('Slow finger sliding action performed successfully!');
-  }
+  };
 
   compareHash = async (data, saltRounds) => {
     const round = await namespaceWrapper.getRound();
