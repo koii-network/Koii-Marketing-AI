@@ -905,6 +905,39 @@ class Twitter extends Adapter {
     await currentPage.waitForTimeout(await this.randomDelay(3000));
   };
 
+  clickBackButton = async currentPage => {
+    const backButtonSelector = 'button[data-testid="app-bar-back"]';
+
+    // Wait for the back button to appear and be visible
+    await currentPage.waitForSelector(backButtonSelector, { visible: true });
+
+    // Find the back button
+    const backButton = await currentPage.$(backButtonSelector);
+
+    if (backButton) {
+      const buttonBox = await backButton.boundingBox();
+
+      if (buttonBox) {
+        // Function to add a random offset to simulate human-like clicking
+        const getRandomOffset = range => {
+          return Math.floor(Math.random() * (range * 2 + 1)) - range;
+        };
+
+        // Simulate a click on the back button with random offsets
+        await currentPage.mouse.click(
+          buttonBox.x + buttonBox.width / 2 + getRandomOffset(5),
+          buttonBox.y + buttonBox.height / 2 + getRandomOffset(5),
+        );
+
+        console.log('Back button clicked successfully!');
+      } else {
+        console.log('Back button is not visible.');
+      }
+    } else {
+      console.log('Back button not found.');
+    }
+  };
+
   /**
    * parseItem
    * @param {string} url - the url of the item to parse
@@ -988,37 +1021,7 @@ class Twitter extends Adapter {
       // );
 
       // click back button
-      const backButtonSelector = 'button[data-testid="app-bar-back"]';
-
-      // Wait for the back button to appear and be visible
-      await currentPage.waitForSelector(backButtonSelector, { visible: true });
-
-      // Find the back button
-      const backButton = await currentPage.$(backButtonSelector);
-
-      if (backButton) {
-        const buttonBox = await backButton.boundingBox();
-
-        if (buttonBox) {
-          // Function to add a random offset to simulate human-like clicking
-          const getRandomOffset = range => {
-            return Math.floor(Math.random() * (range * 2 + 1)) - range;
-          };
-
-          // Simulate a click on the back button with random offsets
-          await currentPage.mouse.click(
-            buttonBox.x + buttonBox.width / 2 + getRandomOffset(5),
-            buttonBox.y + buttonBox.height / 2 + getRandomOffset(5),
-          );
-
-          console.log('Back button clicked successfully!');
-        } else {
-          console.log('Back button is not visible.');
-        }
-      } else {
-        console.log('Back button not found.');
-      }
-      // await currentPage.close();
+      await this.clickBackButton(currentPage);
 
       if (screen_name && tweet_text) {
         data = {
