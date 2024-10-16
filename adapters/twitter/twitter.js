@@ -112,7 +112,7 @@ class Twitter extends Adapter {
 
       // Set a mobile viewport size
       await this.page.setViewport({
-        width: 390,
+        width: 397,
         height: 812,
         isMobile: true,
         hasTouch: true,
@@ -532,7 +532,7 @@ class Twitter extends Adapter {
     const commentPage = await currentBrowser.newPage();
     // Set a mobile viewport size
     await commentPage.setViewport({
-      width: 390,
+      width: 397,
       height: 812,
       isMobile: true,
       hasTouch: true,
