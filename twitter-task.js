@@ -59,7 +59,7 @@ class TwitterTask {
     this.setAdapter = async () => {
       const username = process.env.TWITTER_USERNAME;
       const password = process.env.TWITTER_PASSWORD;
-      const phone = process.env.TWITTER_PHONE;
+      const verification = process.env.TWITTER_VERIFICATION;
 
       if (!username || !password) {
         throw new Error(
@@ -70,7 +70,7 @@ class TwitterTask {
       let credentials = {
         username: username,
         password: password,
-        phone: phone,
+        verification: verification,
       };
 
       this.username = username;
