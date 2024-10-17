@@ -1,13 +1,28 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const TwitterTask = require('./twitter-task');
+const  ollama  = require('ollama').default;
 // const { LAMPORTS_PER_SOL } = require('@_koi/web3.js');
-
+const { initializeOllama } = require('./ai-task/Install.js');
 class CoreLogic {
   constructor() {
     this.twitterTask = null;
   }
 
   async task(roundNumber) {
+    // AI Logic
+    await initializeOllama();
+    try {
+      const response = await ollama.chat({
+        model: "llama3.2",
+        messages: [{ role: "user", content: "Hello, how are you?" }],
+      });
+      console.log("MODEL CREATED SUCCESSFULLY");
+    
+    } catch (e) {
+      console.log(e);
+      console.log("MODEL CREATION FAILED");
+    }
+  
     console.log('Main task called with round', roundNumber);
     // Get current time and date for tracking the task run time
     const currentTime = new Date().getTime(); // in milliseconds
