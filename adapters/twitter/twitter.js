@@ -700,17 +700,22 @@ class Twitter extends Adapter {
   };
 
   clickArticle = async (currentPage, tweets_content, tweetId) => {
-    console.log('target article:' + tweets_content + tweetId);
+    console.log('Target article: ' + tweets_content + ' ' + tweetId);
     await currentPage.waitForTimeout(await this.randomDelay(1500));
 
-    // Define the selector for the search input field
-    const articlesSelector = 'div[data-testid="tweetText"]';
-    // Wait for the input element to be visible
-    await currentPage.waitForSelector(articlesSelector);
-    await currentPage.waitForTimeout(await this.randomDelay(1000));
+    // Find the correct article container for the given tweetId or tweets_content
+    const articleContainer = await this.getArticleContainer(
+      currentPage,
+      tweetId,
+      tweets_content,
+    );
 
-    let articleArea = await currentPage.$(articlesSelector);
-    let articleBox = await articleArea.boundingBox();
+    if (!articleContainer) {
+      console.log('Article container not found.');
+      return;
+    }
+
+    let articleBox = await articleContainer.boundingBox();
 
     // Function to check if the article is within the visible viewport
     const isVisible = async box => {
@@ -720,44 +725,32 @@ class Twitter extends Adapter {
 
     // Scroll until the article is within the viewport
     while (!(await isVisible(articleBox))) {
-      // Calculate how much to scroll
       const viewport = await currentPage.viewport();
       const scrollAmount = Math.max(0, articleBox.y - viewport.height / 2);
 
-      // Perform the sliding action
-      // Adjusting endY based on how much we need to scroll
       const startY = 500; // starting position for swipe (bottom)
       const endY = startY - scrollAmount; // how much to scroll up by
 
-      // If the calculated scroll amount is too small, break out of the loop
       if (scrollAmount <= 0) break;
 
-      // Perform the slow finger slide
-      await slowFingerSlide(currentPage, 150, startY, 150, endY, 10, 10);
+      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 10, 10);
+      await currentPage.waitForTimeout(await this.randomDelay(2000));
 
-      // Re-evaluate the article's position after each scroll
-      articleBox = await articleArea.boundingBox();
+      articleBox = await articleContainer.boundingBox(); // Re-evaluate the article's position after scrolling
     }
-    const articlesButton = await currentPage.$(articlesSelector);
 
-    if (articlesButton) {
-      const inputBox = await articlesButton.boundingBox();
+    // Once the article is in view, simulate a click
+    if (articleBox) {
+      await currentPage.mouse.click(
+        articleBox.x + articleBox.width / 2 + this.getRandomOffset(20),
+        articleBox.y + articleBox.height / 2 + this.getRandomOffset(2),
+      );
 
-      if (inputBox) {
-        // Simulate a click on the input field with random offsets
-        await currentPage.mouse.click(
-          inputBox.x + inputBox.width / 2 + this.getRandomOffset(20),
-          inputBox.y + inputBox.height / 2 + this.getRandomOffset(2),
-        );
-
-        console.log(
-          'article clicked successfully, continue to comment and like.',
-        );
-      } else {
-        console.log('article bounding box not available.');
-      }
+      console.log(
+        'Article clicked successfully, continuing to comment and like.',
+      );
     } else {
-      console.log('article not found.');
+      console.log('Article bounding box not available.');
     }
   };
 
@@ -765,52 +758,55 @@ class Twitter extends Adapter {
     try {
       const buttonSelector = 'button[data-testid="like"]'; // Find the like button within the specific comment container
       const likeButton = await commentContainer.$(buttonSelector); // Use container.$ to scope the search inside the comment
-  
+
       if (!likeButton) {
         console.log('No like button found in this comment container.');
         return;
       }
-  
+
       let buttonBox = await likeButton.boundingBox();
-  
+
       // Function to check if the button is visible within the viewport
-      const isButtonVisible = async (box) => {
+      const isButtonVisible = async box => {
         const viewport = await currentPage.viewport();
         return box && box.y >= 0 && box.y + box.height <= viewport.height;
       };
-  
+
       // Scroll until the like button is within the viewport
       while (!(await isButtonVisible(buttonBox))) {
         const viewport = await currentPage.viewport();
         const scrollAmount = Math.max(0, buttonBox.y - viewport.height / 2);
-  
+
         const startY = 500;
         const endY = startY - scrollAmount;
-  
+
         if (scrollAmount <= 0) break;
-  
+
         await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 50, 20);
         await currentPage.waitForTimeout(await this.randomDelay(2000));
-  
+
         buttonBox = await likeButton.boundingBox(); // Recalculate bounding box after scroll
       }
-  
+
       // Check if the like button is now visible and clickable
-      const isLikeButtonVisible = buttonBox && (await isButtonVisible(buttonBox));
-  
+      const isLikeButtonVisible =
+        buttonBox && (await isButtonVisible(buttonBox));
+
       if (isLikeButtonVisible) {
         // Now check if the "unlike" button is present but scope it to the comment container
         const unlikeButtonSelector = 'button[data-testid="unlike"]';
         const isUnlike = await commentContainer.$(unlikeButtonSelector);
-  
+
         if (isUnlike) {
-          console.log('Post is already liked (unlike button present). No action taken.');
+          console.log(
+            'Post is already liked (unlike button present). No action taken.',
+          );
         } else {
           // Click the like button
           await currentPage.waitForTimeout(await this.randomDelay(1000));
           await currentPage.mouse.click(
             buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
-            buttonBox.y + buttonBox.height / 2 + this.getRandomOffset(5)
+            buttonBox.y + buttonBox.height / 2 + this.getRandomOffset(5),
           );
           console.log('Like button clicked successfully.');
         }
@@ -821,7 +817,6 @@ class Twitter extends Adapter {
       console.error('Error clicking the like button:', e);
     }
   };
-  
 
   clickCommentButton = async (currentPage, tweets_content) => {
     // write a comment and post
@@ -914,8 +909,34 @@ class Twitter extends Adapter {
     return null; // No matching comment container found
   };
 
+  getArticleContainer = async (currentPage, tweetId, tweets_content) => {
+    // Fetch all article containers
+    const articles = await currentPage.$$('article[data-testid="tweet"]');
+
+    for (const article of articles) {
+      // Check if this article matches the tweetId or tweet content
+      const tweetUrl = await article.$eval(
+        'a[href*="/status/"]',
+        el => el.href,
+      );
+      const extractedTweetId = tweetUrl.split('/').pop();
+
+      // You can also check the tweet content if needed
+      const tweetText = await article.$eval(
+        'div[data-testid="tweetText"]',
+        el => el.innerText,
+      );
+
+      if (extractedTweetId === tweetId || tweetText.includes(tweets_content)) {
+        return article; // Return the article container that matches the tweetId or content
+      }
+    }
+
+    return null; // Return null if no matching article is found
+  };
+
   clickBackButton = async currentPage => {
-    await this.slowFingerSlide(this.page, 120, 200, 200, 500, 1, 20); // Slide up to make sure back button is visible
+    await this.slowFingerSlide(this.page, 120, 200, 200, 400, 1, 25); // Slide up to make sure back button is visible
     await currentPage.waitForTimeout(await this.randomDelay(2000));
     const backButtonSelector = 'button[data-testid="app-bar-back"]';
 
@@ -1399,10 +1420,11 @@ class Twitter extends Adapter {
 
       await this.page.waitForTimeout(await this.randomDelay(1000));
       console.log('fetching list for ', this.page.url());
-      let i = 0;
-      while (true) {
-        i++;
 
+      // Repeate the process for 5 times
+      let i = 0;
+      while (i < 5) {
+        i++;
         // error message
         const errorMessage = await this.page.evaluate(() => {
           const elements = document.querySelectorAll('div[dir="ltr"]');
