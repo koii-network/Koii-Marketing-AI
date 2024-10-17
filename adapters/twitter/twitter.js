@@ -761,84 +761,67 @@ class Twitter extends Adapter {
     }
   };
 
-  clickLikeButton = async currentPage => {
-    const buttonSelector = 'button[data-testid="like"]'; // Selector for the like button
-    await currentPage.waitForSelector(buttonSelector, { timeout: 10000 });
-    await currentPage.waitForTimeout(await this.randomDelay(2000));
-
-    // Find the like button and get its bounding box
-    let likeButton = await currentPage.$(buttonSelector);
-    let buttonBox = await likeButton.boundingBox();
-
-    // Function to check if the button is visible within the viewport
-    const isButtonVisible = async box => {
-      const viewport = await currentPage.viewport();
-      return box && box.y >= 0 && box.y + box.height <= viewport.height;
-    };
-
-    // Scroll until the like button is within the viewport
-    while (!(await isButtonVisible(buttonBox))) {
-      // Perform a sliding action to bring the like button into view
-      const viewport = await currentPage.viewport();
-      const scrollAmount = Math.max(0, buttonBox.y - viewport.height / 2);
-
-      const startY = 500; // Starting position for swipe (bottom)
-      const endY = startY - scrollAmount; // Calculate how much to scroll
-
-      // Break the loop if there's no need to scroll further
-      if (scrollAmount <= 0) break;
-
-      // Perform the slow finger slide to scroll
-      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 50, 20);
-      await currentPage.waitForTimeout(await this.randomDelay(2000));
-      // Re-check the button's position after scrolling
-      buttonBox = await likeButton.boundingBox();
-    }
-
-    // Check if the like button is now visible and clickable
-    const isLikeButtonVisible = await currentPage.evaluate(buttonSelector => {
-      const element = document.querySelector(buttonSelector);
-      if (element) {
-        const { offsetWidth, offsetHeight } = element;
-        return (
-          offsetWidth > 0 &&
-          offsetHeight > 0 &&
-          !element.disabled &&
-          window.getComputedStyle(element).visibility !== 'hidden'
-        );
+  clickLikeButton = async (currentPage, commentContainer) => {
+    try {
+      const buttonSelector = 'button[data-testid="like"]'; // Find the like button within the specific comment container
+      const likeButton = await commentContainer.$(buttonSelector); // Use container.$ to scope the search inside the comment
+  
+      if (!likeButton) {
+        console.log('No like button found in this comment container.');
+        return;
       }
-      return false;
-    }, buttonSelector);
-
-    await currentPage.waitForTimeout(await this.randomDelay(1000));
-
-    if (buttonBox && isLikeButtonVisible) {
-      // Check if the "unlike" button is already present
-      const unlikeButton = 'button[data-testid="unlike"]';
-      const isUnlike = await currentPage.evaluate(unlikeButton => {
-        const element = document.querySelector(unlikeButton);
-        return element && element.getAttribute('data-testid') === 'unlike';
-      }, unlikeButton);
-
-      if (isUnlike) {
-        console.log(
-          'Post is already liked (unlike button present). No action taken.',
-        );
+  
+      let buttonBox = await likeButton.boundingBox();
+  
+      // Function to check if the button is visible within the viewport
+      const isButtonVisible = async (box) => {
+        const viewport = await currentPage.viewport();
+        return box && box.y >= 0 && box.y + box.height <= viewport.height;
+      };
+  
+      // Scroll until the like button is within the viewport
+      while (!(await isButtonVisible(buttonBox))) {
+        const viewport = await currentPage.viewport();
+        const scrollAmount = Math.max(0, buttonBox.y - viewport.height / 2);
+  
+        const startY = 500;
+        const endY = startY - scrollAmount;
+  
+        if (scrollAmount <= 0) break;
+  
+        await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 50, 20);
+        await currentPage.waitForTimeout(await this.randomDelay(2000));
+  
+        buttonBox = await likeButton.boundingBox(); // Recalculate bounding box after scroll
+      }
+  
+      // Check if the like button is now visible and clickable
+      const isLikeButtonVisible = buttonBox && (await isButtonVisible(buttonBox));
+  
+      if (isLikeButtonVisible) {
+        // Now check if the "unlike" button is present but scope it to the comment container
+        const unlikeButtonSelector = 'button[data-testid="unlike"]';
+        const isUnlike = await commentContainer.$(unlikeButtonSelector);
+  
+        if (isUnlike) {
+          console.log('Post is already liked (unlike button present). No action taken.');
+        } else {
+          // Click the like button
+          await currentPage.waitForTimeout(await this.randomDelay(1000));
+          await currentPage.mouse.click(
+            buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
+            buttonBox.y + buttonBox.height / 2 + this.getRandomOffset(5)
+          );
+          console.log('Like button clicked successfully.');
+        }
       } else {
-        // Click the like button
-        await currentPage.waitForTimeout(await this.randomDelay(1000));
-        await currentPage.mouse.click(
-          buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
-          buttonBox.y + buttonBox.height / 2 + this.getRandomOffset(5),
-        );
-        console.log('Like button clicked successfully.');
+        console.error('Like button is not visible or clickable.');
       }
-    } else {
-      console.error(
-        'Like button is not visible, disabled, or bounding box is null. Check for overlaps or state.',
-      );
+    } catch (e) {
+      console.error('Error clicking the like button:', e);
     }
   };
+  
 
   clickCommentButton = async (currentPage, tweets_content) => {
     // write a comment and post
@@ -914,9 +897,26 @@ class Twitter extends Adapter {
     await currentPage.waitForTimeout(await this.randomDelay(3000));
   };
 
+  // Helper function to get the comment container
+  getCommentContainer = async (currentPage, commentText) => {
+    const containers = await currentPage.$$('article[aria-labelledby]');
+
+    for (const container of containers) {
+      const textContent = await container.$eval(
+        'div[data-testid="tweetText"]',
+        el => el.innerText,
+      );
+      if (textContent.toLowerCase().includes(commentText.toLowerCase())) {
+        return container; // Return the correct comment container
+      }
+    }
+
+    return null; // No matching comment container found
+  };
+
   clickBackButton = async currentPage => {
     await this.slowFingerSlide(this.page, 120, 200, 200, 500, 1, 20); // Slide up to make sure back button is visible
-    await currentPage.waitForTimeout(await this.randomDelay(500));
+    await currentPage.waitForTimeout(await this.randomDelay(2000));
     const backButtonSelector = 'button[data-testid="app-bar-back"]';
 
     // Wait for the back button to appear and be visible
@@ -997,8 +997,16 @@ class Twitter extends Adapter {
 
       await currentPage.waitForTimeout(await this.randomDelay(3000));
 
-      // click like button
-      await this.clickLikeButton(currentPage);
+      // Click like button
+      const commentContainer = await this.getCommentContainer(
+        currentPage,
+        tweet_text,
+      );
+      if (commentContainer) {
+        await this.clickLikeButton(currentPage, commentContainer);
+      } else {
+        console.log('Comment container not found for the tweet.');
+      }
 
       await currentPage.waitForTimeout(await this.randomDelay(3000));
 
@@ -1050,7 +1058,7 @@ class Twitter extends Adapter {
       );
       for (let i = 0; i < 5; i++) {
         await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 10);
-        await currentPage.waitForTimeout(await this.randomDelay(1500));
+        await currentPage.waitForTimeout(await this.randomDelay(2000));
         const comments = await currentPage.evaluate(() => {
           const elements = document.querySelectorAll(
             'article[aria-labelledby]',
@@ -1059,13 +1067,26 @@ class Twitter extends Adapter {
         });
         console.log('Found comments: ', comments.length);
         for (const comment of comments) {
-          await currentPage.waitForTimeout(await this.randomDelay(2000));
+          await currentPage.waitForTimeout(await this.randomDelay(500));
           const $ = cheerio.load(comment);
           const commentText = $('div[data-testid="tweetText"]').text();
           console.log('Comment text:', commentText);
+
           if (commentText.toLowerCase().includes('koii')) {
             console.log('Found comment with keyword "koii"');
-            await this.clickLikeButton(currentPage);
+            // Find the correct like button for this comment
+            const commentContainer = await this.getCommentContainer(
+              currentPage,
+              commentText,
+            );
+            if (commentContainer) {
+              console.log('Found comment container for the matching comment.');
+              await this.clickLikeButton(currentPage, commentContainer); // Pass the comment container to the click function
+            } else {
+              console.log(
+                'Could not find comment container for the matching comment.',
+              );
+            }
           }
         }
       }
