@@ -89,12 +89,12 @@ class TwitterTask {
       this.searchTerm = search;
 
       //Store this round searchTerm
-      console.log(
-        'creating crawler for user:',
-        this.searchTerm,
-        this.round,
-        this.comment,
-      );
+      // console.log(
+      //   'creating crawler for user:',
+      //   this.searchTerm,
+      //   this.round,
+      //   this.comment,
+      // );
       this.db.createSearchTerm(this.searchTerm, this.round, this.comment);
     } catch (error) {
       throw new Error('Environment variables TWITTER_PROFILE is not set');

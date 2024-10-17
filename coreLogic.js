@@ -9,28 +9,57 @@ class CoreLogic {
 
   async task(roundNumber) {
     console.log('Main task called with round', roundNumber);
-    const submitterAccountKeyPair = (
-      await namespaceWrapper.getSubmitterAccount()
-    ).publicKey;
-    const key = submitterAccountKeyPair.toBase58();
-    // console.log('submitter key', key);
-    const taskState = await namespaceWrapper.getTaskState({
-      is_submission_required: true,
-    });
-    // console.log('taskState', taskState);
-    const submissionList = taskState.submissions;
+    // Get current time and date for tracking the task run time
+    const currentTime = new Date().getTime(); // in milliseconds
+    console.log('Current time:', currentTime);
 
-    let keyExists = false;
-
-    for (const round in submissionList) {
-      if (submissionList[round].hasOwnProperty(key)) {
-        keyExists = true;
-        break;
-      }
+    // Fetch the current runtime data from the database
+    let runtimeData = await namespaceWrapper.storeGet('twitterTask');
+    console.log('runtimeData:', runtimeData);
+    // If no data exists in the database for the task, initialize it
+    if (!runtimeData) {
+         runtimeData = {
+        targetStopTime: 0,
+        targetRunTime: currentTime,
+      };
+      await namespaceWrapper.storeSet('twitterTask', runtimeData);
     }
 
-    if (!keyExists) {
-      console.log('No submission found for this key, calling twitterTask');
+    // Set the minimum and maximum allowed runtime per day (in milliseconds)
+    const MIN_RUNTIME_PER_DAY = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    const MAX_RUNTIME_PER_DAY = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+    // Generate a random runtime between the minimum and maximum allowed time
+    const randomRuntime =
+      Math.floor(
+        Math.random() * (MAX_RUNTIME_PER_DAY - MIN_RUNTIME_PER_DAY + 1),
+      ) + MIN_RUNTIME_PER_DAY;
+
+    // Set the minimum and maximum allowed cooldown time between task runs (in milliseconds)
+    const MIN_COOLDOWN_TIME = 8 * 60 * 60 * 1000; // 12 hours in milliseconds
+    const MAX_COOLDOWN_TIME = 20 * 60 * 60 * 1000; // 24 hours in milliseconds
+    // Generate a random cooldown time between the minimum and maximum allowed time
+    const randomCooldownTime =
+      Math.floor(Math.random() * (MAX_COOLDOWN_TIME - MIN_COOLDOWN_TIME + 1)) +
+      MIN_COOLDOWN_TIME;
+
+    // Get the last run time and total runtime from the database
+    let { targetStopTime, targetRunTime } = runtimeData;
+
+    if (
+      targetRunTime <= currentTime &&
+      (targetStopTime > currentTime || targetStopTime === 0)
+    ) {
+      // If the task has not been run before, set the target stop time and run time
+      if (targetStopTime === 0) {
+        let targetStopTime = currentTime + randomRuntime;
+        let targetRunTime = 0;
+        let runtimeData = {
+          targetStopTime,
+          targetRunTime,
+        };
+        await namespaceWrapper.storeSet('twitterTask', runtimeData);
+      }
+      // run the task
       try {
         this.twitterTask = await new TwitterTask(roundNumber);
         console.log('started a new crawler at round', roundNumber);
@@ -38,7 +67,18 @@ class CoreLogic {
         console.log('error starting crawler', e);
       }
     } else {
-      console.log('Key exists in submissionList, skipping');
+      // Do not run the task
+      if (targetRunTime === 0) {
+        let targetRunTime = currentTime + randomCooldownTime;
+        let targetStopTime = 0;
+        let runtimeData = {
+          targetStopTime,
+          targetRunTime,
+        };
+        await namespaceWrapper.storeSet('twitterTask', runtimeData);
+      }
+      console.log('reach the maximum runtime for the day');
+      return;
     }
   }
 

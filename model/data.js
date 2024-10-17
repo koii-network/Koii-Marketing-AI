@@ -188,6 +188,8 @@ class Data {
     try {
       const resp = await this.db.find({ id: comment });
       if (resp.length > 0) {
+        // return the last timestamp
+        // console.log('Timestamp retrieved for comment:', comment, resp[0].timestamp);
         return resp[0].timestamp;
       } else {
         return null;
