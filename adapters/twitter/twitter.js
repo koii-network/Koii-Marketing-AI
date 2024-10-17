@@ -195,9 +195,10 @@ class Twitter extends Adapter {
         console.log('Step: Fill in username');
         console.log(this.credentials.username);
 
-        await currentPage.type('input[name="text"]', this.credentials.username);
+        await this.humanType(currentPage, 'input[name="text"]', this.credentials.username);
+
         await currentPage.keyboard.press('Enter');
-        await new Promise(resolve => setTimeout(resolve, 8000));
+        await currentPage.waitForTimeout(await this.randomDelay(5000));
 
         const twitter_verify = await currentPage
           .waitForSelector('input[data-testid="ocfEnterTextTextInput"]', {
@@ -208,12 +209,10 @@ class Twitter extends Adapter {
           .catch(() => false);
 
         if (twitter_verify) {
-          console.log('Twitter verify needed, trying phone number');
-          console.log('Step: Fill in phone number');
-          await currentPage.type(
-            'input[data-testid="ocfEnterTextTextInput"]',
-            this.credentials.phone,
-          );
+          console.log('Twitter verify needed, trying verification');
+          console.log('Step: Fill in verification');
+
+          await this.humanType(currentPage, 'input[data-testid="ocfEnterTextTextInput"]', this.credentials.verification);
           await currentPage.keyboard.press('Enter');
 
           // add delay
@@ -230,13 +229,11 @@ class Twitter extends Adapter {
 
         await currentPage.waitForSelector('input[name="password"]');
         console.log('Step: Fill in password');
-        await currentPage.type(
-          'input[name="password"]',
-          this.credentials.password,
-        );
+        await this.humanType(currentPage, 'input[name="password"]', this.credentials.password);
+
         console.log('Step: Click login button');
         await currentPage.keyboard.press('Enter');
-        await currentPage.waitForTimeout(await this.randomDelay(8000));
+        await currentPage.waitForTimeout(await this.randomDelay(5000));
         if (!(await this.checkLogin(currentBrowser))) {
           console.log('Password is incorrect or email verification needed.');
           await currentPage.waitForTimeout(await this.randomDelay(5000));
@@ -494,7 +491,7 @@ class Twitter extends Adapter {
     }
 
     // Extra delay after finishing typing to simulate human thinking or reviewing
-    const finishDelay = Math.random() * 3000 + 1000;
+    const finishDelay = Math.random() * 2000 + 1000;
     console.log(
       `Finished typing. Waiting for additional mouse delay of ${finishDelay} ms`,
     );
