@@ -809,6 +809,7 @@ class Twitter extends Adapter {
             buttonBox.y + buttonBox.height / 2 + this.getRandomOffset(5),
           );
           console.log('Like button clicked successfully.');
+          await currentPage.waitForTimeout(await this.randomDelay(2000));
         }
       } else {
         console.error('Like button is not visible or clickable.');
