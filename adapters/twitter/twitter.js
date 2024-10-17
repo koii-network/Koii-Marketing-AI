@@ -536,153 +536,6 @@ class Twitter extends Adapter {
     return text.replace(/\s+/g, '').trim();
   };
 
-  // TODO: Re-write the getTheCommentDetails function
-  getTheCommentDetails = async (url, commentText, currentBrowser) => {
-    const commentPage = await currentBrowser.newPage();
-    // Set a mobile viewport size
-    await commentPage.setViewport({
-      width: 397,
-      height: 812,
-      isMobile: true,
-      hasTouch: true,
-      deviceScaleFactor: 2,
-    });
-
-    // Set a mobile user agent
-    await commentPage.setUserAgent(
-      'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
-    );
-    await commentPage.goto(url);
-    await commentPage.waitForTimeout(await this.randomDelay(3000));
-
-    // Extract existing comments and check if the comment exists
-    let hasMoreComments = true;
-    let trimCommentText = await this.cleanText(commentText);
-    while (hasMoreComments) {
-      await commentPage.waitForTimeout(await this.randomDelay(2000));
-
-      const commentDetails = await commentPage.evaluate(
-        async cleanTextStr => {
-          const cleanText = new Function('return ' + cleanTextStr)();
-          const tweetElements = Array.from(
-            document.querySelectorAll('article[data-testid="tweet"]'),
-          );
-
-          const details = [];
-
-          await Promise.all(
-            tweetElements.map(async tweetElement => {
-              let commentId = null;
-              let username = null;
-              let postTime = null;
-
-              const textElement = tweetElement.querySelector('div[lang]');
-              let textContent = '';
-              if (textElement && textElement.childNodes) {
-                textElement.childNodes.forEach(node => {
-                  let content = '';
-
-                  if (node.nodeName === 'IMG') {
-                    content = node.alt || '';
-                  } else {
-                    content = node.innerText || node.textContent;
-                  }
-
-                  // Check if content is not null, undefined, or empty
-                  if (content) {
-                    textContent += content;
-                  }
-                });
-              }
-
-              const anchorElements = tweetElement.querySelectorAll(
-                'div[data-testid="User-Name"]',
-              );
-              anchorElements.forEach(anchorElement => {
-                const getAnchorTags = anchorElement.querySelectorAll('a');
-
-                for (let index = 0; index < getAnchorTags.length; index++) {
-                  const element = getAnchorTags[getAnchorTags.length - 1];
-
-                  // Extract username
-                  const urlMatch = element.href.match(
-                    /^https?:\/\/[^\/]+\/([^\/]+)\/status\/(\d+)$/,
-                  );
-                  username = urlMatch ? urlMatch[1] : null;
-                  commentId = urlMatch ? urlMatch[2] : null;
-
-                  // Extract post time
-                  const timeElement = element.querySelector('time');
-                  postTime = timeElement
-                    ? timeElement.getAttribute('datetime')
-                    : null;
-
-                  break;
-                }
-              });
-              await new Promise(resolve => setTimeout(resolve, 10000));
-
-              if (textContent) {
-                try {
-                  const getComments = await cleanText(textContent);
-                  details.push({ commentId, getComments, username, postTime });
-                } catch (error) {
-                  console.error('Error processing comment:', error);
-                }
-              }
-            }),
-          );
-
-          return details;
-        },
-        this.cleanText.toString(),
-        trimCommentText,
-      );
-
-      // Check if the comment already exists
-      const foundItem = commentDetails.find(
-        item =>
-          item.getComments
-            .toLowerCase()
-            .includes(trimCommentText.toLowerCase()) &&
-          item.username === this.username,
-      );
-
-      if (foundItem) {
-        // Convert foundItem to a boolean to check if it exists
-        const found = !!foundItem;
-
-        if (found) {
-          console.log('Comment found.');
-          const timestamp = await this.convertToTimestamp(foundItem.postTime);
-          foundItem.postTime = timestamp;
-          foundItem.getComments = commentText;
-          await commentPage.waitForTimeout(await this.randomDelay(1000));
-          await commentPage.close();
-          return foundItem;
-        }
-      }
-
-      // Scroll down to load more comments
-      const previousScrollHeight = await commentPage.evaluate(
-        () => document.body.scrollHeight,
-      );
-      await commentPage.evaluate(() =>
-        window.scrollTo(0, document.body.scrollHeight),
-      );
-      await commentPage.waitForTimeout(await this.randomDelay(1000));
-
-      const currentScrollHeight = await commentPage.evaluate(
-        () => document.body.scrollHeight,
-      );
-      hasMoreComments = currentScrollHeight > previousScrollHeight;
-    }
-
-    console.log('Comment does not exist.');
-    await commentPage.waitForTimeout(await this.randomDelay(1000));
-    await commentPage.close();
-    return {};
-  };
 
   moveMouseSmoothly = async (page, targetX, targetY) => {
     const minSteps = 5;
@@ -702,57 +555,87 @@ class Twitter extends Adapter {
   clickArticle = async (currentPage, tweets_content, tweetId) => {
     console.log('Target article: ' + tweets_content + ' ' + tweetId);
     await currentPage.waitForTimeout(await this.randomDelay(1500));
-
+  
     // Find the correct article container for the given tweetId or tweets_content
-    const articleContainer = await this.getArticleContainer(
-      currentPage,
-      tweetId,
-      tweets_content,
-    );
-
+    const articleContainer = await this.getArticleContainer(currentPage, tweetId, tweets_content);
+  
     if (!articleContainer) {
       console.log('Article container not found.');
       return;
     }
-
-    let articleBox = await articleContainer.boundingBox();
-
+  
+    let textContentContainer = await articleContainer.$('div[data-testid="tweetText"]'); // Target the text content specifically
+  
+    if (!textContentContainer) {
+      console.log('Text content container not found in the article.');
+      return;
+    }
+  
+    let textBox = await textContentContainer.boundingBox();
+  
     // Function to check if the article is within the visible viewport
-    const isVisible = async box => {
+    const isVisible = async (box) => {
       const viewport = await currentPage.viewport();
       return box && box.y >= 0 && box.y + box.height <= viewport.height;
     };
-
-    // Scroll until the article is within the viewport
-    while (!(await isVisible(articleBox))) {
+  
+    // Scroll until the text content is within the viewport
+    while (!(await isVisible(textBox))) {
       const viewport = await currentPage.viewport();
-      const scrollAmount = Math.max(0, articleBox.y - viewport.height / 2);
-
-      const startY = 500; // starting position for swipe (bottom)
-      const endY = startY - scrollAmount; // how much to scroll up by
-
+      const scrollAmount = Math.max(0, textBox.y - viewport.height / 2);
+  
+      const startY = 500;  // starting position for swipe (bottom)
+      const endY = startY - scrollAmount;  // how much to scroll up by
+  
       if (scrollAmount <= 0) break;
-
-      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 10, 10);
+  
+      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 30, 35);
       await currentPage.waitForTimeout(await this.randomDelay(2000));
-
-      articleBox = await articleContainer.boundingBox(); // Re-evaluate the article's position after scrolling
+  
+      textBox = await textContentContainer.boundingBox();  // Re-evaluate the text container's position after scrolling
     }
-
-    // Once the article is in view, simulate a click
-    if (articleBox) {
+  
+    // Once the text content is in view, simulate a click
+    if (textBox) {
       await currentPage.mouse.click(
-        articleBox.x + articleBox.width / 2 + this.getRandomOffset(20),
-        articleBox.y + articleBox.height / 2 + this.getRandomOffset(2),
+        textBox.x + textBox.width / 2 + this.getRandomOffset(20),
+        textBox.y + textBox.height / 2 + this.getRandomOffset(2),
       );
-
-      console.log(
-        'Article clicked successfully, continuing to comment and like.',
-      );
+  
+      await currentPage.waitForTimeout(await this.randomDelay(2000));
+  
+      // Check if clicking opened a photo by mistake (URL changes to include `/photo/`)
+      const currentUrl = currentPage.url();
+      if (currentUrl.includes('/photo/')) {
+        console.log('Photo was clicked by mistake. Closing the photo.');
+  
+        // Close the photo (usually by clicking a "close" button or pressing ESC)
+        const closeButtonSelector = 'div[role="button"][aria-label="Close"]';  // Example selector for a close button
+        const closeButton = await currentPage.$(closeButtonSelector);
+  
+        if (closeButton) {
+          await closeButton.click();
+          console.log('Photo closed successfully.');
+  
+          // Retry clicking the text content container
+          console.log('Retrying to click the text content of the article.');
+          await currentPage.mouse.click(
+            textBox.x + textBox.width / 2 + this.getRandomOffset(20),
+            textBox.y + textBox.height / 2 + this.getRandomOffset(2),
+          );
+          console.log('Text content clicked successfully after closing the photo.');
+        } else {
+          console.log('Could not find close button for the photo. Trying to close with ESC key.');
+          await currentPage.keyboard.press('Escape');  // Fallback: Press the ESC key to close the photo modal
+        }
+      } else {
+        console.log('Article text content clicked successfully, continuing to comment and like.');
+      }
     } else {
-      console.log('Article bounding box not available.');
+      console.log('Text content bounding box not available.');
     }
   };
+  
 
   clickLikeButton = async (currentPage, commentContainer) => {
     try {
@@ -760,7 +643,7 @@ class Twitter extends Adapter {
       const likeButton = await commentContainer.$(buttonSelector); // Use container.$ to scope the search inside the comment
 
       if (!likeButton) {
-        console.log('No like button found in this comment container.');
+        console.log('Post already liked.');
         return;
       }
 
@@ -1032,24 +915,6 @@ class Twitter extends Adapter {
 
       await currentPage.waitForTimeout(await this.randomDelay(3000));
 
-      // check if already comments or not
-      // check if comment is posted or not if posted then get the details
-      // TODO: Re-write the getTheCommentDetails function
-      // const checkComments = await this.getTheCommentDetails(
-      //   getNewPageUrl,
-      //   this.comment,
-      //   currentBrowser,
-      // );
-
-      // if (
-      //   checkComments != null &&
-      //   typeof checkComments === 'object' &&
-      //   Object.keys(checkComments).length > 0
-      // ) {
-      //   await currentPage.close();
-      //   return data;
-      // }
-
       // check comment cooldown
       const currentTimeStamp = await this.getCurrentTimestamp(); // Fetch the current timestamp
       let isTimestampValid = await this.checkCommentTimestamp(currentTimeStamp);
@@ -1065,14 +930,6 @@ class Twitter extends Adapter {
       } else {
         console.log('No comment action was taken due to recent activity.');
       }
-
-      // TODO: Rewrite the getTheCommentDetails function
-      // check if comment is posted or not if posted then get the details
-      // const getCommentDetailsObject = await this.getTheCommentDetails(
-      //   getNewPageUrl,
-      //   this.comment,
-      //   currentBrowser,
-      // );
 
       // Check other comments and like comments who have keyword "koii"
       console.log(
