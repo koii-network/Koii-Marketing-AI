@@ -195,7 +195,11 @@ class Twitter extends Adapter {
         console.log('Step: Fill in username');
         console.log(this.credentials.username);
 
-        await this.humanType(currentPage, 'input[name="text"]', this.credentials.username);
+        await this.humanType(
+          currentPage,
+          'input[name="text"]',
+          this.credentials.username,
+        );
 
         await currentPage.keyboard.press('Enter');
         await currentPage.waitForTimeout(await this.randomDelay(5000));
@@ -212,7 +216,11 @@ class Twitter extends Adapter {
           console.log('Twitter verify needed, trying verification');
           console.log('Step: Fill in verification');
 
-          await this.humanType(currentPage, 'input[data-testid="ocfEnterTextTextInput"]', this.credentials.verification);
+          await this.humanType(
+            currentPage,
+            'input[data-testid="ocfEnterTextTextInput"]',
+            this.credentials.verification,
+          );
           await currentPage.keyboard.press('Enter');
 
           // add delay
@@ -229,7 +237,11 @@ class Twitter extends Adapter {
 
         await currentPage.waitForSelector('input[name="password"]');
         console.log('Step: Fill in password');
-        await this.humanType(currentPage, 'input[name="password"]', this.credentials.password);
+        await this.humanType(
+          currentPage,
+          'input[name="password"]',
+          this.credentials.password,
+        );
 
         console.log('Step: Click login button');
         await currentPage.keyboard.press('Enter');
@@ -903,6 +915,8 @@ class Twitter extends Adapter {
   };
 
   clickBackButton = async currentPage => {
+    await this.slowFingerSlide(this.page, 120, 200, 200, 500, 1, 20); // Slide up to make sure back button is visible
+    await currentPage.waitForTimeout(await this.randomDelay(500));
     const backButtonSelector = 'button[data-testid="app-bar-back"]';
 
     // Wait for the back button to appear and be visible
@@ -1030,7 +1044,33 @@ class Twitter extends Adapter {
       //   currentBrowser,
       // );
 
-      // click back button
+      // Check other comments and like comments who have keyword "koii"
+      console.log(
+        "Check other comments and like comments who have keyword 'koii'",
+      );
+      for (let i = 0; i < 5; i++) {
+        await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 10);
+        await currentPage.waitForTimeout(await this.randomDelay(1500));
+        const comments = await currentPage.evaluate(() => {
+          const elements = document.querySelectorAll(
+            'article[aria-labelledby]',
+          );
+          return Array.from(elements).map(element => element.outerHTML);
+        });
+        console.log('Found comments: ', comments.length);
+        for (const comment of comments) {
+          await currentPage.waitForTimeout(await this.randomDelay(2000));
+          const $ = cheerio.load(comment);
+          const commentText = $('div[data-testid="tweetText"]').text();
+          console.log('Comment text:', commentText);
+          if (commentText.toLowerCase().includes('koii')) {
+            console.log('Found comment with keyword "koii"');
+            await this.clickLikeButton(currentPage);
+          }
+        }
+      }
+
+      // click back button after all comments and like
       await this.clickBackButton(currentPage);
 
       if (screen_name && tweet_text) {
@@ -1356,6 +1396,9 @@ class Twitter extends Adapter {
           return false;
         });
 
+        console.log('Waiting for tweets loaded');
+        // await this.page.waitForNavigation({ waitUntil: 'networkidle2' });
+        await this.page.waitForTimeout(await this.randomDelay(4500));
         // get the articles
         const items = await this.page.evaluate(() => {
           const elements = document.querySelectorAll(
@@ -1363,9 +1406,6 @@ class Twitter extends Adapter {
           );
           return Array.from(elements).map(element => element.outerHTML);
         });
-        console.log('Waiting for tweets loaded');
-        // await this.page.waitForNavigation({ waitUntil: 'networkidle2' });
-        await this.page.waitForTimeout(await this.randomDelay(4500));
         console.log('Found items: ', items.length);
 
         // loop the articles
