@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
-
+const { askCopilot } = require('../copilot/copilot');
 /**
  * Twitter
  * @class
@@ -1013,53 +1013,9 @@ class Twitter extends Adapter {
     @return => templated blurb
 */
 
-  genText(textToRead) {
-    let snippetSelectors = [
-      '#Person',
-      '#Possessive #Noun',
-      '#Preposition #ProperNoun',
-      '#ProperNoun',
-      '#FirstName',
-      '#Adjective #Noun #Noun',
-      '#Adjective #Noun',
-      '#Noun #Noun #Noun',
-      '#Preposition #ProperNoun',
-      '#Verb #Noun',
-      '#ProperNoun #Verb',
-      '#Verb #ProperNoun',
-      '#Adverb #Verb',
-    ];
-    let result = 0;
-    let n = 0;
-    do {
-      let snippet = this.selectSnippet(snippetSelectors[n], textToRead);
-      if (snippet.length > 1) {
-        // console.log('found result', snippet, 'with selector ', snippetSelectors[n])
-        if (snippet.length < 20) {
-          result = snippet;
-          // console.log('\r\nfound: "', result ,'" on selector ', n)
-          if (n > 7) result = ' you ' + result.substring(2);
-        }
-      }
-      n++;
-    } while (result == 0 && n < snippetSelectors.length);
-
-    if (result == 0) {
-      // console.log('\r\nFAILED to find text in ', textToRead)
-      result = '#REDTober';
-    }
-
-    let templates = [
-      `We got ${result} before we got Koii mainnet`,
-      `I can't believe we got ${result} before Koii launched.`,
-      `Wow, ${result} is dope and all, but I want Koii.`,
-      `Wen ${result}, Koii launch?`,
-    ];
-    let output = templates[Math.floor(Math.random() * (templates.length - 1))];
-    // output = nlp(output);
-    // let output = result;
-    console.log('genText returning ', output);
-    return output;
+  async genText(textToRead) {
+    const response = await askCopilot(`Generate a Twitter comment related to Koii Network in the text, do not use any refrences, for this post: ${textToRead}`);
+    return response;
   }
 
   /**
