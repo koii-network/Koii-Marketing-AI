@@ -536,7 +536,6 @@ class Twitter extends Adapter {
     return text.replace(/\s+/g, '').trim();
   };
 
-
   moveMouseSmoothly = async (page, targetX, targetY) => {
     const minSteps = 5;
     const maxSteps = 20;
@@ -554,88 +553,99 @@ class Twitter extends Adapter {
 
   clickArticle = async (currentPage, tweets_content, tweetId) => {
     console.log('Target article: ' + tweets_content + ' ' + tweetId);
-    await currentPage.waitForTimeout(await this.randomDelay(1500));
-  
+    await currentPage.waitForTimeout(await this.randomDelay(2000));
+
     // Find the correct article container for the given tweetId or tweets_content
-    const articleContainer = await this.getArticleContainer(currentPage, tweetId, tweets_content);
-  
+    const articleContainer = await this.getArticleContainer(
+      currentPage,
+      tweetId,
+      tweets_content,
+    );
+
     if (!articleContainer) {
       console.log('Article container not found.');
       return;
     }
-  
-    let textContentContainer = await articleContainer.$('div[data-testid="tweetText"]'); // Target the text content specifically
-  
+
+    let textContentContainer = await articleContainer.$(
+      'div[data-testid="tweetText"]',
+    ); // Target the text content specifically
+
     if (!textContentContainer) {
       console.log('Text content container not found in the article.');
       return;
     }
-  
+
     let textBox = await textContentContainer.boundingBox();
-  
+
     // Function to check if the article is within the visible viewport
-    const isVisible = async (box) => {
+    const isVisible = async box => {
       const viewport = await currentPage.viewport();
       return box && box.y >= 0 && box.y + box.height <= viewport.height;
     };
-  
+
     // Scroll until the text content is within the viewport
     while (!(await isVisible(textBox))) {
       const viewport = await currentPage.viewport();
       const scrollAmount = Math.max(0, textBox.y - viewport.height / 2);
-  
-      const startY = 500;  // starting position for swipe (bottom)
-      const endY = startY - scrollAmount;  // how much to scroll up by
-  
+
+      const startY = 500; // starting position for swipe (bottom)
+      const endY = startY - scrollAmount; // how much to scroll up by
+
       if (scrollAmount <= 0) break;
-  
-      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 30, 35);
+
+      await this.slowFingerSlide(currentPage, 150, startY, 150, endY, 60, 10);
       await currentPage.waitForTimeout(await this.randomDelay(2000));
-  
-      textBox = await textContentContainer.boundingBox();  // Re-evaluate the text container's position after scrolling
+
+      textBox = await textContentContainer.boundingBox(); // Re-evaluate the text container's position after scrolling
     }
-  
+
     // Once the text content is in view, simulate a click
     if (textBox) {
       await currentPage.mouse.click(
         textBox.x + textBox.width / 2 + this.getRandomOffset(20),
         textBox.y + textBox.height / 2 + this.getRandomOffset(2),
       );
-  
+
       await currentPage.waitForTimeout(await this.randomDelay(2000));
-  
+
       // Check if clicking opened a photo by mistake (URL changes to include `/photo/`)
       const currentUrl = currentPage.url();
       if (currentUrl.includes('/photo/')) {
         console.log('Photo was clicked by mistake. Closing the photo.');
-  
+
         // Close the photo (usually by clicking a "close" button or pressing ESC)
-        const closeButtonSelector = 'div[role="button"][aria-label="Close"]';  // Example selector for a close button
+        const closeButtonSelector = 'div[role="button"][aria-label="Close"]'; // Example selector for a close button
         const closeButton = await currentPage.$(closeButtonSelector);
-  
+
         if (closeButton) {
           await closeButton.click();
           console.log('Photo closed successfully.');
-  
+
           // Retry clicking the text content container
           console.log('Retrying to click the text content of the article.');
           await currentPage.mouse.click(
             textBox.x + textBox.width / 2 + this.getRandomOffset(20),
             textBox.y + textBox.height / 2 + this.getRandomOffset(2),
           );
-          console.log('Text content clicked successfully after closing the photo.');
+          console.log(
+            'Text content clicked successfully after closing the photo.',
+          );
         } else {
-          console.log('Could not find close button for the photo. Trying to close with ESC key.');
-          await currentPage.keyboard.press('Escape');  // Fallback: Press the ESC key to close the photo modal
+          console.log(
+            'Could not find close button for the photo. Trying to close with ESC key.',
+          );
+          await currentPage.keyboard.press('Escape'); // Fallback: Press the ESC key to close the photo modal
         }
       } else {
-        console.log('Article text content clicked successfully, continuing to comment and like.');
+        console.log(
+          'Article text content clicked successfully, continuing to comment and like.',
+        );
       }
     } else {
       console.log('Text content bounding box not available.');
     }
   };
-  
 
   clickLikeButton = async (currentPage, commentContainer) => {
     try {
@@ -949,7 +959,7 @@ class Twitter extends Adapter {
           await currentPage.waitForTimeout(await this.randomDelay(500));
           const $ = cheerio.load(comment);
           const commentText = $('div[data-testid="tweetText"]').text();
-          console.log('Comment text:', commentText);
+          // console.log('Comment text:', commentText);
 
           if (commentText.toLowerCase().includes('koii')) {
             console.log('Found comment with keyword "koii"');
@@ -1279,94 +1289,88 @@ class Twitter extends Adapter {
       await this.page.waitForTimeout(await this.randomDelay(1000));
       console.log('fetching list for ', this.page.url());
 
-      // Repeate the process for 5 times
-      let i = 0;
-      while (i < 5) {
-        i++;
-        // error message
-        const errorMessage = await this.page.evaluate(() => {
-          const elements = document.querySelectorAll('div[dir="ltr"]');
-          for (let element of elements) {
-            console.log(element.textContent);
-            if (
-              element.textContent === 'Something went wrong. Try reloading.'
-            ) {
-              return true;
-            }
-          }
-          return false;
-        });
-
-        console.log('Waiting for tweets loaded');
-        // await this.page.waitForNavigation({ waitUntil: 'networkidle2' });
-        await this.page.waitForTimeout(await this.randomDelay(4500));
-        // get the articles
-        const items = await this.page.evaluate(() => {
-          const elements = document.querySelectorAll(
-            'article[aria-labelledby]',
-          );
-          return Array.from(elements).map(element => element.outerHTML);
-        });
-        console.log('Found items: ', items.length);
-
-        // loop the articles
-        for (const item of items) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // @soma Nice delay timer, never thought of doing it this way
-          try {
-            await this.page.waitForTimeout(await this.randomDelay(2000));
-            // add the comment on the post
-            let data = await this.parseItem(item, url, this.page, this.browser);
-
-            // check if comment found or not
-            if (data.tweets_id) {
-              let checkItem = {
-                id: data.tweets_id,
-              };
-              const existingItem = await this.db.getItem(checkItem);
-              if (!existingItem) {
-                this.cids.create({
-                  id: data.tweets_id,
-                  round: round,
-                  data: data,
-                });
-              }
-            }
-          } catch (e) {
-            console.log(
-              'Something went wrong while fetching the list of items :: ',
-              e,
-            );
+      // error message
+      const errorMessage = await this.page.evaluate(() => {
+        const elements = document.querySelectorAll('div[dir="ltr"]');
+        for (let element of elements) {
+          console.log(element.textContent);
+          if (element.textContent === 'Something went wrong. Try reloading.') {
+            return true;
           }
         }
+        return false;
+      });
 
+      await this.page.waitForTimeout(await this.randomDelay(4500));
+      await this.slowFingerSlide(this.page, 150, 500, 250, 200, 10, 5);
+      console.log('Waiting for tweets loaded');
+      // await this.page.waitForNavigation({ waitUntil: 'networkidle2' });
+      await this.page.waitForTimeout(await this.randomDelay(4000));
+      await this.slowFingerSlide(this.page, 150, 200, 250, 500, 5, 5);
+      await this.page.waitForTimeout(await this.randomDelay(1000));
+      // get the articles
+      const items = await this.page.evaluate(() => {
+        const elements = document.querySelectorAll('article[aria-labelledby]');
+        return Array.from(elements).map(element => element.outerHTML);
+      });
+      console.log('Found items: ', items.length);
+
+      // loop the articles
+      for (const item of items) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // @soma Nice delay timer, never thought of doing it this way
         try {
-          let dataLength = (await this.cids.getList({ round: round })).length;
-          if (dataLength > 120 || i > 4) {
-            console.log('reach maixmum data per round. Closed old browser');
-            this.browser.close();
-            break;
-          }
-          console.log('No more items found, scrolling down...');
-          // Call the function to perform the slow slide
-          await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 5);
-
-          // Optional: wait for a moment to allow new elements to load
           await this.page.waitForTimeout(await this.randomDelay(2000));
+          // add the comment on the post
+          let data = await this.parseItem(item, url, this.page, this.browser);
 
-          // Refetch the elements after scrolling
-          await this.page.evaluate(() => {
-            return document.querySelectorAll('article[aria-labelledby]');
-          });
+          // check if comment found or not
+          if (data.tweets_id) {
+            let checkItem = {
+              id: data.tweets_id,
+            };
+            const existingItem = await this.db.getItem(checkItem);
+            if (!existingItem) {
+              this.cids.create({
+                id: data.tweets_id,
+                round: round,
+                data: data,
+              });
+            }
+          }
         } catch (e) {
-          console.log('round check error', e);
+          console.log(
+            'Something went wrong while fetching the list of items :: ',
+            e,
+          );
         }
+      }
 
-        // If the error message is found, wait for 2 minutes, refresh the page, and continue
-        if (errorMessage) {
-          console.log('Rate limit reach, waiting for next round...');
+      try {
+        let dataLength = (await this.cids.getList({ round: round })).length;
+        console.log('Time to break, data length: ', dataLength);
+        if (dataLength > 120) {
+          console.log('reach maixmum data per round. Closed old browser');
           this.browser.close();
-          break;
         }
+        console.log('No more items found, scrolling down...');
+        // Call the function to perform the slow slide
+        await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 5);
+
+        // Optional: wait for a moment to allow new elements to load
+        await this.page.waitForTimeout(await this.randomDelay(2000));
+
+        // Refetch the elements after scrolling
+        await this.page.evaluate(() => {
+          return document.querySelectorAll('article[aria-labelledby]');
+        });
+      } catch (e) {
+        console.log('round check error', e);
+      }
+
+      // If the error message is found, wait for 2 minutes, refresh the page, and continue
+      if (errorMessage) {
+        console.log('Rate limit reach, waiting for next round...');
+        this.browser.close();
       }
       return;
     } catch (e) {
