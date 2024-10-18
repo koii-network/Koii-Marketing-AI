@@ -110,14 +110,6 @@ class TwitterTask {
     let keyword;
     let search;
     try {
-      let searchList = [ 'crypto', 'depin' ]
-      // pick random search term
-      search = searchList[Math.floor(Math.random() * searchList.length)];
-      const submitterAccountKeyPair = (
-        await namespaceWrapper.getSubmitterAccount()
-      ).publicKey;
-      const key = submitterAccountKeyPair.toBase58();
-      console.log('submitter key', key);
       const response = await axios.get('http://localhost:3000/keywords', {
         params: {
           key,
@@ -126,10 +118,10 @@ class TwitterTask {
       console.log('Keywords from middle server', response.data);
       keyword = response.data;
     } catch (error) {
-      console.error('Error fetching keywords:', error.message);
-      const wordsList = require('./couch_comments.json');
-      const randomIndex = Math.floor(Math.random() * wordsList.length);
-      keyword = wordsList[randomIndex];
+      console.log('Error fetching keywords:, use random keyword');
+      // pick random search term
+      let searchList = ['crypto', 'depin'];
+      search = searchList[Math.floor(Math.random() * searchList.length)];
     }
 
     return { comment: keyword, search: search };

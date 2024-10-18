@@ -741,9 +741,11 @@ class Twitter extends Adapter {
         );
       } else {
         console.log('Button is not visible.');
+        return false;
       }
     } else {
       console.log('Reply button not found.');
+      return false;
     }
 
     await currentPage.waitForTimeout(await this.randomDelay(3000));
@@ -776,14 +778,16 @@ class Twitter extends Adapter {
         );
 
         console.log('Reply button clicked successfully!');
+        await currentPage.waitForTimeout(await this.randomDelay(3000));
+        return true;
       } else {
         console.log('Button bounding box not available.');
+        return false;
       }
     } else {
       console.log('Reply button not found.');
+      return false;
     }
-
-    await currentPage.waitForTimeout(await this.randomDelay(3000));
   };
 
   // Helper function to get the comment container
@@ -878,6 +882,7 @@ class Twitter extends Adapter {
       await this.negotiateSession();
     }
     try {
+      let isCommented = false;
       const $ = cheerio.load(item);
       let data = {};
 
@@ -931,7 +936,10 @@ class Twitter extends Adapter {
       console.log('isTimestampValid', isTimestampValid);
       if (isTimestampValid) {
         // Click the comment button if the timestamp check is valid
-        await this.clickCommentButton(currentPage, tweets_content);
+        isCommented = await this.clickCommentButton(
+          currentPage,
+          tweets_content,
+        );
 
         // Store the current timestamp as the new 'LAST_COMMENT_MADE'
         this.commentsDB.createTimestamp('LAST_COMMENT_MADE', currentTimeStamp);
@@ -980,10 +988,7 @@ class Twitter extends Adapter {
         }
       }
 
-      // click back button after all comments and like
-      await this.clickBackButton(currentPage);
-
-      if (screen_name && tweet_text) {
+      if (screen_name && tweet_text && isCommented) {
         data = {
           user_name: user_name,
           screen_name: screen_name,
@@ -994,9 +999,12 @@ class Twitter extends Adapter {
           time_post: time,
           keyword: this.searchTerm,
           hash: hash,
-          // commentDetails: getCommentDetailsObject,
         };
       }
+
+      // click back button after all comments and like
+      await this.clickBackButton(currentPage);
+
       return data;
     } catch (e) {
       console.log('Something went wrong when comment or like post :: ', e);
@@ -1345,33 +1353,14 @@ class Twitter extends Adapter {
         }
       }
 
-      try {
-        let dataLength = (await this.cids.getList({ round: round })).length;
-        console.log('Time to break, data length: ', dataLength);
-        if (dataLength > 120) {
-          console.log('reach maixmum data per round. Closed old browser');
-          this.browser.close();
-        }
-        console.log('No more items found, scrolling down...');
-        // Call the function to perform the slow slide
-        await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 5);
+      console.log('Time to take a break');
 
-        // Optional: wait for a moment to allow new elements to load
-        await this.page.waitForTimeout(await this.randomDelay(2000));
+      // Call the function to perform the slow slide
+      await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 5);
 
-        // Refetch the elements after scrolling
-        await this.page.evaluate(() => {
-          return document.querySelectorAll('article[aria-labelledby]');
-        });
-      } catch (e) {
-        console.log('round check error', e);
-      }
-
-      // If the error message is found, wait for 2 minutes, refresh the page, and continue
-      if (errorMessage) {
-        console.log('Rate limit reach, waiting for next round...');
-        this.browser.close();
-      }
+      // Optional: wait for a moment to allow new elements to load
+      await this.page.waitForTimeout(await this.randomDelay(2000));
+      this.browser.close();
       return;
     } catch (e) {
       console.log('Last round fetching list stop', e);
