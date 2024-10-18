@@ -1581,7 +1581,7 @@ class Twitter extends Adapter {
       const options = {};
       const userAuditDir = path.join(
         __dirname,
-        'puppeteer_cache_AIC_twitter_archive_audit',
+        'puppeteer_cache_VIP_twitter_archive_audit',
       );
       const stats = await PCR(options);
       console.log(
