@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
+const e = require('express');
 
 /**
  * Twitter
@@ -637,7 +638,7 @@ class Twitter extends Adapter {
           );
           await currentPage.keyboard.press('Escape'); // Fallback: Press the ESC key to close the photo modal
         }
-      } else {
+      } else if (currentUrl.includes(tweetId)) {
         console.log(
           'Article text content clicked successfully, continuing to comment and like.',
         );
@@ -918,7 +919,16 @@ class Twitter extends Adapter {
         tweet_text,
       );
       if (commentContainer) {
+        let currentUrl = currentPage.url();
         await this.clickLikeButton(currentPage, commentContainer);
+
+        // check if url changed
+        if (currentUrl !== currentPage.url()) {
+          console.log('Url changed after like action. Changed to:', currentPage.url());
+          return false;
+        } else {
+          console.log('Like action performed successfully.');
+        }
       } else {
         console.log('Comment container not found for the tweet.');
       }
@@ -1026,7 +1036,9 @@ class Twitter extends Adapter {
       }
       return data;
     } catch (e) {
-      console.log('Something went wrong when comment or like post :: ', e);
+      console.log('Something went wrong when comment or like post, back to other post', e);
+      // click back button after all comments and like
+      await this.clickBackButton(currentPage);
     }
   };
 
@@ -1267,16 +1279,26 @@ class Twitter extends Adapter {
             linkBox.x + linkBox.width / 2 + this.getRandomOffset(5),
             linkBox.y + linkBox.height / 2 + this.getRandomOffset(5),
           );
-
-          console.log('Explore link clicked successfully!');
+          await this.page.waitForTimeout(await this.randomDelay(3000));
+          if (this.page.url().includes('explore')) {
+            console.log('Explore link clicked successfully!');
+          } else {
+            // retry click
+            await this.page.mouse.click(
+              linkBox.x + linkBox.width / 2 + this.getRandomOffset(5),
+              linkBox.y + linkBox.height / 2 + this.getRandomOffset(5),
+            );
+            await this.page.waitForTimeout(await this.randomDelay(3000));
+            if (this.page.url().includes('explore')) {
+              console.log('Explore link clicked successfully!');
+            }
+          }
         } else {
           console.log('Link bounding box not available.');
         }
       } else {
         console.log('Explore link not found.');
       }
-
-      await this.page.waitForTimeout(await this.randomDelay(3000));
 
       // Define the selector for the search input field
       const searchInputSelector = 'input[data-testid="SearchBox_Search_Input"]';
@@ -1351,7 +1373,7 @@ class Twitter extends Adapter {
           let data = await this.parseItem(item, url, this.page, this.browser);
 
           // check if comment found or not
-          if (data.tweets_id) {
+          if (data.tweets_id !== undefined || data.tweets_id !== null) {
             let checkItem = {
               id: data.tweets_id,
             };
@@ -1363,10 +1385,13 @@ class Twitter extends Adapter {
                 data: data,
               });
             }
+          } else if (data === false) {
+            console.log('Wrong behavior detected, closing the browser');
+            break;
           }
         } catch (e) {
           console.log(
-            'Something went wrong while fetching the list of items :: ',
+            'Something went wrong while fetching the list of items, continue to next post ',
             e,
           );
         }
