@@ -960,9 +960,19 @@ class Twitter extends Adapter {
           const $ = cheerio.load(comment);
           const commentText = $('div[data-testid="tweetText"]').text();
           // console.log('Comment text:', commentText);
-
+        
+          let shouldLike = false; // Flag to decide whether to click "like"
+        
           if (commentText.toLowerCase().includes('koii')) {
             console.log('Found comment with keyword "koii"');
+            // 90% chance to click like if the keyword is "koii"
+            shouldLike = Math.random() < 0.9;
+          } else {
+            // 10% chance to click like if the keyword is not present
+            shouldLike = Math.random() < 0.1;
+          }
+        
+          if (shouldLike) {
             // Find the correct like button for this comment
             const commentContainer = await this.getCommentContainer(
               currentPage,
@@ -976,8 +986,11 @@ class Twitter extends Adapter {
                 'Could not find comment container for the matching comment.',
               );
             }
+          } else {
+            console.log('Skipping like for this comment.');
           }
         }
+        
       }
 
       // click back button after all comments and like
