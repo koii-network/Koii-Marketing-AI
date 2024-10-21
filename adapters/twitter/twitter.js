@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
+const e = require('express');
 
 /**
  * Twitter
@@ -637,7 +638,7 @@ class Twitter extends Adapter {
           );
           await currentPage.keyboard.press('Escape'); // Fallback: Press the ESC key to close the photo modal
         }
-      } else {
+      } else if (currentUrl.includes(tweetId)) {
         console.log(
           'Article text content clicked successfully, continuing to comment and like.',
         );
@@ -1267,16 +1268,26 @@ class Twitter extends Adapter {
             linkBox.x + linkBox.width / 2 + this.getRandomOffset(5),
             linkBox.y + linkBox.height / 2 + this.getRandomOffset(5),
           );
-
-          console.log('Explore link clicked successfully!');
+          await this.page.waitForTimeout(await this.randomDelay(3000));
+          if (this.page.url().includes('explore')) {
+            console.log('Explore link clicked successfully!');
+          } else {
+            // retry click
+            await this.page.mouse.click(
+              linkBox.x + linkBox.width / 2 + this.getRandomOffset(5),
+              linkBox.y + linkBox.height / 2 + this.getRandomOffset(5),
+            );
+            await this.page.waitForTimeout(await this.randomDelay(3000));
+            if (this.page.url().includes('explore')) {
+              console.log('Explore link clicked successfully!');
+            }
+          }
         } else {
           console.log('Link bounding box not available.');
         }
       } else {
         console.log('Explore link not found.');
       }
-
-      await this.page.waitForTimeout(await this.randomDelay(3000));
 
       // Define the selector for the search input field
       const searchInputSelector = 'input[data-testid="SearchBox_Search_Input"]';
