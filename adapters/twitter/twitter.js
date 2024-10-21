@@ -919,7 +919,16 @@ class Twitter extends Adapter {
         tweet_text,
       );
       if (commentContainer) {
+        let currentUrl = currentPage.url();
         await this.clickLikeButton(currentPage, commentContainer);
+
+        // check if url changed
+        if (currentUrl !== currentPage.url()) {
+          console.log('Url changed after like action. Changed to:', currentPage.url());
+          return false;
+        } else {
+          console.log('Like action performed successfully.');
+        }
       } else {
         console.log('Comment container not found for the tweet.');
       }
@@ -1027,7 +1036,9 @@ class Twitter extends Adapter {
       }
       return data;
     } catch (e) {
-      console.log('Something went wrong when comment or like post :: ', e);
+      console.log('Something went wrong when comment or like post, back to other post', e);
+      // click back button after all comments and like
+      await this.clickBackButton(currentPage);
     }
   };
 
@@ -1362,7 +1373,7 @@ class Twitter extends Adapter {
           let data = await this.parseItem(item, url, this.page, this.browser);
 
           // check if comment found or not
-          if (data.tweets_id) {
+          if (data.tweets_id !== undefined || data.tweets_id !== null) {
             let checkItem = {
               id: data.tweets_id,
             };
@@ -1374,10 +1385,13 @@ class Twitter extends Adapter {
                 data: data,
               });
             }
+          } else if (data === false) {
+            console.log('Wrong behavior detected, closing the browser');
+            break;
           }
         } catch (e) {
           console.log(
-            'Something went wrong while fetching the list of items :: ',
+            'Something went wrong while fetching the list of items, continue to next post ',
             e,
           );
         }
