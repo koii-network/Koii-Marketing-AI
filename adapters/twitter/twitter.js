@@ -945,33 +945,46 @@ class Twitter extends Adapter {
       console.log(
         "Check other comments and like comments who have keyword 'koii'",
       );
+
+      let processedComments = new Set(); // Track processed comments
+
       for (let i = 0; i < 5; i++) {
         await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 10);
         await currentPage.waitForTimeout(await this.randomDelay(2000));
+      
+        // Fetch the current comments
         const comments = await currentPage.evaluate(() => {
-          const elements = document.querySelectorAll(
-            'article[aria-labelledby]',
-          );
+          const elements = document.querySelectorAll('article[aria-labelledby]');
           return Array.from(elements).map(element => element.outerHTML);
         });
+      
         console.log('Found comments: ', comments.length);
+        
         for (const comment of comments) {
           await currentPage.waitForTimeout(await this.randomDelay(500));
           const $ = cheerio.load(comment);
-          const commentText = $('div[data-testid="tweetText"]').text();
-          // console.log('Comment text:', commentText);
-        
+          const commentText = $('div[data-testid="tweetText"]').text().trim(); // Get comment text
+      
+          // Check if the comment is already processed
+          if (processedComments.has(commentText)) {
+            // console.log('Skipping duplicate comment.');
+            continue; // Skip if the comment has already been processed
+          }
+      
+          // Add this comment to the processed set
+          processedComments.add(commentText);
+      
           let shouldLike = false; // Flag to decide whether to click "like"
-        
+      
           if (commentText.toLowerCase().includes('koii')) {
             console.log('Found comment with keyword "koii"');
             // 90% chance to click like if the keyword is "koii"
-            shouldLike = Math.random() < 0.9;
+            shouldLike = Math.random() < 0.95;
           } else {
             // 10% chance to click like if the keyword is not present
-            shouldLike = Math.random() < 0.1;
+            shouldLike = Math.random() < 0.3;
           }
-        
+      
           if (shouldLike) {
             // Find the correct like button for this comment
             const commentContainer = await this.getCommentContainer(
@@ -987,11 +1000,12 @@ class Twitter extends Adapter {
               );
             }
           } else {
-            console.log('Skipping like for this comment.');
+            // Skipping like for this comment
+            // console.log('Skipping like for this comment.');
           }
         }
-        
       }
+      
 
       // click back button after all comments and like
       await this.clickBackButton(currentPage);
