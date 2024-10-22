@@ -554,6 +554,7 @@ class Twitter extends Adapter {
 
   clickArticle = async (currentPage, tweets_content, tweetId) => {
     console.log('Target article: ' + tweets_content + ' ' + tweetId);
+    await this.slowFingerSlide(currentPage, 150, 500, 160, 300, 100, 2); // Avoid button overlay
     await currentPage.waitForTimeout(await this.randomDelay(2000));
 
     // Find the correct article container for the given tweetId or tweets_content
@@ -591,7 +592,7 @@ class Twitter extends Adapter {
       const scrollAmount = Math.max(0, textBox.y - viewport.height / 2);
 
       const startY = 500; // starting position for swipe (bottom)
-      const endY = startY - scrollAmount; // how much to scroll up by
+      const endY = startY - scrollAmount - 50; // -50 for avoid accident clicking on bottom bar
 
       if (scrollAmount <= 0) break;
 
@@ -658,6 +659,8 @@ class Twitter extends Adapter {
         return;
       }
 
+      await this.slowFingerSlide(currentPage, 150, 500, 160, 300, 100, 2); // Avoid button overlay
+      await currentPage.waitForTimeout(await this.randomDelay(2000));
       let buttonBox = await likeButton.boundingBox();
 
       // Function to check if the button is visible within the viewport
@@ -672,7 +675,7 @@ class Twitter extends Adapter {
         const scrollAmount = Math.max(0, buttonBox.y - viewport.height / 2);
 
         const startY = 500;
-        const endY = startY - scrollAmount;
+        const endY = startY - scrollAmount - 50; // -50 for avoid accident clicking on bottom bar
 
         if (scrollAmount <= 0) break;
 
@@ -924,7 +927,10 @@ class Twitter extends Adapter {
 
         // check if url changed
         if (currentUrl !== currentPage.url()) {
-          console.log('Url changed after like action. Changed to:', currentPage.url());
+          console.log(
+            'Url changed after like action. Changed to:',
+            currentPage.url(),
+          );
           return false;
         } else {
           console.log('Like action performed successfully.');
@@ -935,11 +941,35 @@ class Twitter extends Adapter {
 
       await currentPage.waitForTimeout(await this.randomDelay(3000));
 
+      // Check if already posted the comment
+      let isAlreadComment = false;
+      // Fetch the current comments
+      const existComments = await currentPage.evaluate(() => {
+        const elements = document.querySelectorAll('article[aria-labelledby]');
+        return Array.from(elements).map(element => element.outerHTML);
+      });
+
+      for (const comment of existComments) {
+        const $ = cheerio.load(comment);
+
+        // Find the element for the username inside each individual comment
+        const allText = $('a[role="link"]').text();
+        const user_name = allText.split('@')[0].trim(); // Trim any extra spaces
+
+        // console.log('user_name:', user_name);
+
+        if (user_name === this.username) {
+          console.log('Already posted the comment');
+          isAlreadComment = true;
+          break;
+        }
+      }
+
       // check comment cooldown
       const currentTimeStamp = await this.getCurrentTimestamp(); // Fetch the current timestamp
       let isTimestampValid = await this.checkCommentTimestamp(currentTimeStamp);
       console.log('isTimestampValid', isTimestampValid);
-      if (isTimestampValid) {
+      if (isTimestampValid && !isAlreadComment) {
         // Click the comment button if the timestamp check is valid
         await this.clickCommentButton(currentPage, tweets_content);
 
@@ -961,31 +991,33 @@ class Twitter extends Adapter {
       for (let i = 0; i < 5; i++) {
         await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 10);
         await currentPage.waitForTimeout(await this.randomDelay(2000));
-      
+
         // Fetch the current comments
         const comments = await currentPage.evaluate(() => {
-          const elements = document.querySelectorAll('article[aria-labelledby]');
+          const elements = document.querySelectorAll(
+            'article[aria-labelledby]',
+          );
           return Array.from(elements).map(element => element.outerHTML);
         });
-      
-        console.log('Found comments: ', comments.length);
-        
+
+        // console.log('Found comments: ', comments.length);
+
         for (const comment of comments) {
           await currentPage.waitForTimeout(await this.randomDelay(500));
           const $ = cheerio.load(comment);
           const commentText = $('div[data-testid="tweetText"]').text().trim(); // Get comment text
-      
+
           // Check if the comment is already processed
           if (processedComments.has(commentText)) {
             // console.log('Skipping duplicate comment.');
             continue; // Skip if the comment has already been processed
           }
-      
+
           // Add this comment to the processed set
           processedComments.add(commentText);
-      
+
           let shouldLike = false; // Flag to decide whether to click "like"
-      
+
           if (commentText.toLowerCase().includes('koii')) {
             console.log('Found comment with keyword "koii"');
             // 90% chance to click like if the keyword is "koii"
@@ -994,7 +1026,7 @@ class Twitter extends Adapter {
             // 10% chance to click like if the keyword is not present
             shouldLike = Math.random() < 0.3;
           }
-      
+
           if (shouldLike) {
             // Find the correct like button for this comment
             const commentContainer = await this.getCommentContainer(
@@ -1003,7 +1035,18 @@ class Twitter extends Adapter {
             );
             if (commentContainer) {
               console.log('Found comment container for the matching comment.');
+              let currentUrl = currentPage.url();
               await this.clickLikeButton(currentPage, commentContainer); // Pass the comment container to the click function
+              // check if url changed
+              if (currentUrl !== currentPage.url()) {
+                console.log(
+                  'Url changed after like action. Changed to:',
+                  currentPage.url(),
+                );
+                return false;
+              } else {
+                console.log('Like action performed successfully.');
+              }
             } else {
               console.log(
                 'Could not find comment container for the matching comment.',
@@ -1015,7 +1058,6 @@ class Twitter extends Adapter {
           }
         }
       }
-      
 
       // click back button after all comments and like
       await this.clickBackButton(currentPage);
@@ -1036,7 +1078,10 @@ class Twitter extends Adapter {
       }
       return data;
     } catch (e) {
-      console.log('Something went wrong when comment or like post, back to other post', e);
+      console.log(
+        'Something went wrong when comment or like post, back to other post',
+        e,
+      );
       // click back button after all comments and like
       await this.clickBackButton(currentPage);
     }
@@ -1371,6 +1416,14 @@ class Twitter extends Adapter {
           await this.page.waitForTimeout(await this.randomDelay(2000));
           // add the comment on the post
           let data = await this.parseItem(item, url, this.page, this.browser);
+          console.log('data', data);
+          if (data === false) {
+            // Try again
+            console.log('Try again');
+            await this.page.waitForTimeout(await this.randomDelay(2000));
+            await this.fetchList(url, round, searchTerm);
+            break;
+          }
 
           // check if comment found or not
           if (data.tweets_id !== undefined || data.tweets_id !== null) {
@@ -1385,9 +1438,6 @@ class Twitter extends Adapter {
                 data: data,
               });
             }
-          } else if (data === false) {
-            console.log('Wrong behavior detected, closing the browser');
-            break;
           }
         } catch (e) {
           console.log(
@@ -1400,21 +1450,13 @@ class Twitter extends Adapter {
       try {
         let dataLength = (await this.cids.getList({ round: round })).length;
         console.log('Time to break, data length: ', dataLength);
-        if (dataLength > 120) {
-          console.log('reach maixmum data per round. Closed old browser');
-          this.browser.close();
-        }
-        console.log('No more items found, scrolling down...');
         // Call the function to perform the slow slide
         await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 5);
 
         // Optional: wait for a moment to allow new elements to load
         await this.page.waitForTimeout(await this.randomDelay(2000));
 
-        // Refetch the elements after scrolling
-        await this.page.evaluate(() => {
-          return document.querySelectorAll('article[aria-labelledby]');
-        });
+        this.browser.close();
       } catch (e) {
         console.log('round check error', e);
       }
@@ -1452,7 +1494,7 @@ class Twitter extends Adapter {
     // End the touch event
     await page.touchscreen.touchEnd();
 
-    console.log('Slow finger sliding action performed successfully!');
+    // console.log('Slow finger sliding action performed successfully!');
   };
 
   compareHash = async (data, saltRounds) => {
