@@ -84,7 +84,7 @@ async function askCopilot(question) {
     return element ? element.innerText : null;
   });
 
-  await page.waitForTimeout(1000000);
+  await page.waitForTimeout(2000);
   await browser.close();
   return textContent;
 }

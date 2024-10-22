@@ -10,8 +10,9 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
 const e = require('express');
-const { getContext } = require('../context/context');
+const {Context} = require('../context/context');
 const { askllama } = require('../LLaMa/llama');
+const { askCopilot } = require('../copilot/copilot');
 /**
  * Twitter
  * @class
@@ -1052,15 +1053,26 @@ class Twitter extends Adapter {
     * textToRead receives a blurb of text 
     @return => templated blurb
 */
-  async filterText(){
-    
+  async filterNewLineChar(text){
+    // remove /n
+    console.log('text', text);
+    const filteredText = text.replace(/\n/g, ' ');
+    return filteredText;
   }
+
+  async filterDoubleQuote(text){
+    const filteredText = text.replace(/"/g, '');
+    return filteredText;
+  }
+
   async genText(textToRead) {
-    const context = await getContext();
+    this.context = new Context();
+    await this.context.initializeContext();
+    const contextInText = await this.context.getContext();
     const purposePrompt = await this.purposePrompt();
     let comment;
     try {
-      const response = await askllama(`${context}${purposePrompt} ${textToRead}`);
+      const response = await askllama(`${contextInText}${purposePrompt} ${textToRead}`);
       if (response){
         comment = response;
       }
@@ -1069,8 +1081,10 @@ class Twitter extends Adapter {
     }
     if (!comment){
       try{
-        const response = await askCopilot(`${context}${purposePrompt} ${textToRead}`);
-        return response;
+        const filteredText = await this.filterNewLineChar(contextInText+textToRead+purposePrompt);
+        const response = await askCopilot(filteredText);
+        const filteredResponse = await this.filterDoubleQuote(response);
+        return filteredResponse;
       }catch(e){
         console.log('Error in askCopilot', e);
       }
@@ -1083,9 +1097,9 @@ class Twitter extends Adapter {
     */
   async purposePrompt(){
     const purposes = [
-      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. ", 
-      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious.", 
-      "Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. "
+      "Your character encounters a tweet like the one above, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI!   ", 
+      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ", 
+      "Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! "
     ]
     const randomPurpose = purposes[Math.floor(Math.random() * purposes.length)];
     return randomPurpose;

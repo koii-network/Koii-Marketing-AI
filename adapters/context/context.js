@@ -38,7 +38,8 @@ class Context {
         const context = (await this.getFromDB('Char-Info')).map(item => item.info)[0];
         const personality = (await this.getFromDB('Char-Personality')).map(item => item.info)[0];
         const purpose = (await this.getFromDB('Char-Purpose')).map(item => item.info)[0];
-        return {context: context, personality: personality, purpose: purpose};
+        const contextInText = `${context}\n${personality}\n${purpose}`;
+        return contextInText;
     }
 
     async getDailyInfo(){
