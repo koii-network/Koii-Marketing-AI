@@ -46,12 +46,12 @@ async function executeTasks() {
   for (let i = 3; i < 4; i++) {
     let delay = 600000;
     let round = i;
-    // coreLogic.task(round);
+    coreLogic.task(round);
     // await sleep(50000);
 
-    let adapter = new Twitter(credentials, db, 3);
-    let audit = await adapter.verify(data, i);
-    console.log('audit', audit);
+    // let adapter = new Twitter(credentials, db, 3);
+    // let audit = await adapter.verify(data, i);
+    // console.log('audit', audit);
     // coreLogic.auditTask(round - 1);
 
     await sleep(delay);
