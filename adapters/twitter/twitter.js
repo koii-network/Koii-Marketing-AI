@@ -9,7 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
-const { askCopilot } = require('../copilot/copilot');
+const e = require('express');
+
 /**
  * Twitter
  * @class
@@ -637,7 +638,7 @@ class Twitter extends Adapter {
           );
           await currentPage.keyboard.press('Escape'); // Fallback: Press the ESC key to close the photo modal
         }
-      } else {
+      } else if (currentUrl.includes(tweetId)) {
         console.log(
           'Article text content clicked successfully, continuing to comment and like.',
         );
@@ -918,7 +919,16 @@ class Twitter extends Adapter {
         tweet_text,
       );
       if (commentContainer) {
+        let currentUrl = currentPage.url();
         await this.clickLikeButton(currentPage, commentContainer);
+
+        // check if url changed
+        if (currentUrl !== currentPage.url()) {
+          console.log('Url changed after like action. Changed to:', currentPage.url());
+          return false;
+        } else {
+          console.log('Like action performed successfully.');
+        }
       } else {
         console.log('Comment container not found for the tweet.');
       }
@@ -945,24 +955,47 @@ class Twitter extends Adapter {
       console.log(
         "Check other comments and like comments who have keyword 'koii'",
       );
+
+      let processedComments = new Set(); // Track processed comments
+
       for (let i = 0; i < 5; i++) {
         await this.slowFingerSlide(this.page, 150, 500, 250, 200, 15, 10);
         await currentPage.waitForTimeout(await this.randomDelay(2000));
+      
+        // Fetch the current comments
         const comments = await currentPage.evaluate(() => {
-          const elements = document.querySelectorAll(
-            'article[aria-labelledby]',
-          );
+          const elements = document.querySelectorAll('article[aria-labelledby]');
           return Array.from(elements).map(element => element.outerHTML);
         });
+      
         console.log('Found comments: ', comments.length);
+        
         for (const comment of comments) {
           await currentPage.waitForTimeout(await this.randomDelay(500));
           const $ = cheerio.load(comment);
-          const commentText = $('div[data-testid="tweetText"]').text();
-          // console.log('Comment text:', commentText);
-
+          const commentText = $('div[data-testid="tweetText"]').text().trim(); // Get comment text
+      
+          // Check if the comment is already processed
+          if (processedComments.has(commentText)) {
+            // console.log('Skipping duplicate comment.');
+            continue; // Skip if the comment has already been processed
+          }
+      
+          // Add this comment to the processed set
+          processedComments.add(commentText);
+      
+          let shouldLike = false; // Flag to decide whether to click "like"
+      
           if (commentText.toLowerCase().includes('koii')) {
             console.log('Found comment with keyword "koii"');
+            // 90% chance to click like if the keyword is "koii"
+            shouldLike = Math.random() < 0.95;
+          } else {
+            // 10% chance to click like if the keyword is not present
+            shouldLike = Math.random() < 0.3;
+          }
+      
+          if (shouldLike) {
             // Find the correct like button for this comment
             const commentContainer = await this.getCommentContainer(
               currentPage,
@@ -976,9 +1009,13 @@ class Twitter extends Adapter {
                 'Could not find comment container for the matching comment.',
               );
             }
+          } else {
+            // Skipping like for this comment
+            // console.log('Skipping like for this comment.');
           }
         }
       }
+      
 
       // click back button after all comments and like
       await this.clickBackButton(currentPage);
@@ -999,7 +1036,9 @@ class Twitter extends Adapter {
       }
       return data;
     } catch (e) {
-      console.log('Something went wrong when comment or like post :: ', e);
+      console.log('Something went wrong when comment or like post, back to other post', e);
+      // click back button after all comments and like
+      await this.clickBackButton(currentPage);
     }
   };
 
@@ -1196,16 +1235,26 @@ class Twitter extends Adapter {
             linkBox.x + linkBox.width / 2 + this.getRandomOffset(5),
             linkBox.y + linkBox.height / 2 + this.getRandomOffset(5),
           );
-
-          console.log('Explore link clicked successfully!');
+          await this.page.waitForTimeout(await this.randomDelay(3000));
+          if (this.page.url().includes('explore')) {
+            console.log('Explore link clicked successfully!');
+          } else {
+            // retry click
+            await this.page.mouse.click(
+              linkBox.x + linkBox.width / 2 + this.getRandomOffset(5),
+              linkBox.y + linkBox.height / 2 + this.getRandomOffset(5),
+            );
+            await this.page.waitForTimeout(await this.randomDelay(3000));
+            if (this.page.url().includes('explore')) {
+              console.log('Explore link clicked successfully!');
+            }
+          }
         } else {
           console.log('Link bounding box not available.');
         }
       } else {
         console.log('Explore link not found.');
       }
-
-      await this.page.waitForTimeout(await this.randomDelay(3000));
 
       // Define the selector for the search input field
       const searchInputSelector = 'input[data-testid="SearchBox_Search_Input"]';
@@ -1280,7 +1329,7 @@ class Twitter extends Adapter {
           let data = await this.parseItem(item, url, this.page, this.browser);
 
           // check if comment found or not
-          if (data.tweets_id) {
+          if (data.tweets_id !== undefined || data.tweets_id !== null) {
             let checkItem = {
               id: data.tweets_id,
             };
@@ -1292,10 +1341,13 @@ class Twitter extends Adapter {
                 data: data,
               });
             }
+          } else if (data === false) {
+            console.log('Wrong behavior detected, closing the browser');
+            break;
           }
         } catch (e) {
           console.log(
-            'Something went wrong while fetching the list of items :: ',
+            'Something went wrong while fetching the list of items, continue to next post ',
             e,
           );
         }
