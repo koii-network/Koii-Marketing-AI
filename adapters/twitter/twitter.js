@@ -1120,7 +1120,7 @@ class Twitter extends Adapter {
           time_post: time,
           keyword: this.searchTerm,
           hash: hash,
-          commentDetails: commentDetails
+          commentDetails: commentDetails,
         };
       }
 
@@ -1722,7 +1722,7 @@ class Twitter extends Adapter {
       );
       const stats = await PCR(options);
       console.log(
-        '*****************************************CALLED PURCHROMIUM VERIFIER*****************************************',
+        '*****************************************CALLED Audit VERIFIER*****************************************',
       );
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
@@ -1750,7 +1750,7 @@ class Twitter extends Adapter {
       await verify_page.setViewport({ width: 1024, height: 4000 });
       await verify_page.waitForTimeout(await this.randomDelay(3000));
       // go to the comment page
-      const url = `https://x.com/${inputItem.commentDetails.username}/status/${inputItem.commentDetails.commentId}`;
+      const url = `https://x.com/${inputItem.data.commentDetails.username}/status/${inputItem.data.commentDetails.commentId}`;
       await verify_page.goto(url, { timeout: 60000 });
       await verify_page.waitForTimeout(await this.randomDelay(4000));
 
@@ -1768,138 +1768,36 @@ class Twitter extends Adapter {
       console.log('Retrieve item for', url);
       const commentRes = await this.retrieveItem(
         verify_page,
-        inputItem.commentDetails.getComments,
+        inputItem.data.commentDetails.commentText,
         'commentPage',
       );
-      await verify_page.waitForTimeout(await this.randomDelay(4000));
-      // go to the tweet where comment is posted
-      const url2 = `https://x.com/any/status/${inputItem.tweets_id}`;
-      await verify_page.goto(url2, { timeout: 60000 });
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      // check if the page gave 404
-      let confirmed_no_tweet2 = false;
-      await verify_page.evaluate(() => {
-        if (document.querySelector('[data-testid="error-detail"]')) {
-          console.log('Error detail found');
-          confirmed_no_tweet2 = true;
+
+      console.log('commentRes', commentRes);
+      // check if the comment is found or not
+      if (commentRes.bool) {
+        // check if time_post within 1hr
+        const currentTime = await this.getCurrentTimestamp();
+        const timeDiff = currentTime - commentRes.result.time_post;
+        if (timeDiff > 3600) {
+          console.log('Time difference is more than 1hr');
+          auditBrowser.close();
+          return false;
         }
-      });
-      if (confirmed_no_tweet2) {
+        // check if the tweets_content match
+        if (commentRes.result.tweets_content === inputItem.data.commentDetails.commentText) {
+          console.log('Content match');
+          auditBrowser.close();
+          return true;
+        } else {
+          console.log('Content not match');
+          auditBrowser.close();
+          return false;
+        }
+      } else {
+        await verify_page.waitForTimeout(await this.randomDelay(3000));
+        auditBrowser.close();
         return false;
       }
-      // which page
-      console.log('Retrieve item for', url2);
-      const tweetRes = await this.retrieveItem(verify_page, '', '');
-      await verify_page.waitForTimeout(await this.randomDelay(4000));
-
-      if (
-        Object.keys(commentRes.result.commentDetails).length > 0 &&
-        commentRes.bool &&
-        Object.keys(tweetRes.result).length > 0 &&
-        tweetRes.bool
-      ) {
-        return true;
-      }
-
-      if (
-        Object.keys(commentRes.result.commentDetails).length > 0 &&
-        commentRes.bool
-      ) {
-        // check all the comment details in audits
-        if (
-          commentRes.result.commentDetails.commentId !=
-          inputItem.commentDetails.commentId
-        ) {
-          console.log(
-            'Comment Not Found',
-            commentRes.result.commentDetails.commentId,
-            inputItem.commentDetails.commentId,
-          );
-          auditBrowser.close();
-          return false;
-        }
-        // check the content of the comment
-        const resultGetComments = await this.cleanText(
-          commentRes.result.commentDetails.getComments,
-        );
-        const inputItemGetComments = await this.cleanText(
-          inputItem.commentDetails.getComments,
-        );
-        if (
-          resultGetComments.trim().toLowerCase() !==
-          inputItemGetComments.trim().toLowerCase()
-        ) {
-          console.log(
-            'Comments are not the same',
-            commentRes.result.commentDetails.getComments,
-            inputItem.commentDetails.getComments,
-          );
-          auditBrowser.close();
-          return false;
-        }
-        // check the username
-        if (
-          commentRes.result.commentDetails.username !=
-          inputItem.commentDetails.username
-        ) {
-          console.log(
-            'username is not matched',
-            commentRes.result.commentDetails.username,
-            inputItem.commentDetails.username,
-          );
-          auditBrowser.close();
-          return false;
-        }
-        // get the comment postTime time difference
-        const timeDifference =
-          Math.abs(
-            commentRes.result.commentDetails.postTime -
-              inputItem.commentDetails.postTime,
-          ) * 1000;
-        // Check if the difference is more than 15 minutes
-        if (timeDifference > 15 * 60 * 1000) {
-          console.log(
-            'Post times differ by more than 15 minutes.',
-            commentRes.result.commentDetails.postTime,
-            inputItem.commentDetails.postTime,
-          );
-          auditBrowser.close();
-          return false;
-        }
-
-        // check the tweet content
-        if (Object.keys(tweetRes.result).length > 0 && tweetRes.bool) {
-          // tweet content check
-          if (tweetRes.result.tweets_content != inputItem.tweets_content) {
-            console.log(
-              'Content not match',
-              tweetRes.result.tweets_content,
-              inputItem.tweets_content,
-            );
-            auditBrowser.close();
-            return false;
-          }
-          const dataToCompare = tweetRes.result.tweets_content + round;
-          const hashCompare = bcrypt.compareSync(dataToCompare, inputItem.hash);
-          if (hashCompare == false) {
-            console.log(
-              'Hash Verification Failed',
-              dataToCompare,
-              inputItem.hash,
-            );
-            auditBrowser.close();
-            return false;
-          }
-        }
-
-        auditBrowser.close();
-        return true;
-      }
-
-      // Result does not exist
-      console.log('Result does not exist. ');
-      auditBrowser.close();
-      return false;
     } catch (e) {
       console.log('Error fetching single item', e);
       return false; // Return false in case of an exception
