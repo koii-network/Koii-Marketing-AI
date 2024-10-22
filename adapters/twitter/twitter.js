@@ -705,7 +705,7 @@ class Twitter extends Adapter {
             buttonBox.x + buttonBox.width / 2 + this.getRandomOffset(5),
             buttonBox.y + buttonBox.height / 2 + this.getRandomOffset(5),
           );
-          console.log('Like button clicked successfully.');
+          // console.log('Like button clicked successfully.');
           await currentPage.waitForTimeout(await this.randomDelay(2000));
         }
       } else {
@@ -723,6 +723,7 @@ class Twitter extends Adapter {
     console.log('genText', genText);
     console.log('End genText *******************');
 
+    await this.slowFingerSlide(currentPage, 150, 500, 160, 300, 100, 2); // Avoid button overlay
     const replybuttonSelector = 'button[data-testid="reply"]'; // Selector for the reply button
     await currentPage.waitForSelector(replybuttonSelector, {
       timeout: 10000,
@@ -782,15 +783,47 @@ class Twitter extends Adapter {
         );
 
         console.log('Reply button clicked successfully!');
-        await currentPage.waitForTimeout(await this.randomDelay(3000));
-        return true;
+        await currentPage.waitForTimeout(await this.randomDelay(4000));
+
+        const checkComments = await currentPage.evaluate(() => {
+          const elements = document.querySelectorAll(
+            'article[aria-labelledby]',
+          );
+          return Array.from(elements).map(element => element.outerHTML);
+        });
+
+        for (const comment of checkComments) {
+          const $ = cheerio.load(comment);
+
+          const tweetUrl = $('a[href*="/status/"]').attr('href');
+          const tweetId = tweetUrl.split('/').pop();
+          // Find the href for the username inside each individual comment
+          const linkElement = $('a[tabindex="-1"]');
+          const href = linkElement.attr('href'); // Get the href attribute value
+
+          if (href) {
+            const user_name = href.replace('/', '').trim(); // Remove leading slash
+            // console.log('user_name:', user_name);
+
+            if (user_name === this.username) {
+              let commentDetails = {
+                username: this.username,
+                commentId: tweetId,
+                commentText: genText,
+              };
+              console.log('Found comment');
+              return commentDetails;
+            }
+          }
+        }
+        return null;
       } else {
         console.log('Button bounding box not available.');
-        return false;
+        return null;
       }
     } else {
       console.log('Reply button not found.');
-      return false;
+      return null;
     }
   };
 
@@ -798,17 +831,22 @@ class Twitter extends Adapter {
   getCommentContainer = async (currentPage, commentText) => {
     const containers = await currentPage.$$('article[aria-labelledby]');
 
-    for (const container of containers) {
-      const textContent = await container.$eval(
-        'div[data-testid="tweetText"]',
-        el => el.innerText,
-      );
-      if (textContent.toLowerCase().includes(commentText.toLowerCase())) {
-        return container; // Return the correct comment container
+    try {
+      for (const container of containers) {
+        const textContent = await container.$eval(
+          'div[data-testid="tweetText"]',
+          el => el.innerText,
+        );
+        if (textContent.toLowerCase().includes(commentText.toLowerCase())) {
+          return container; // Return the correct comment container
+        }
       }
-    }
 
-    return null; // No matching comment container found
+      return null; // No matching comment container found
+    } catch (e) {
+      console.log('Error getting comment container:', e);
+      return null;
+    }
   };
 
   getArticleContainer = async (currentPage, tweetId, tweets_content) => {
@@ -886,7 +924,6 @@ class Twitter extends Adapter {
       await this.negotiateSession();
     }
     try {
-      let isCommented = false;
       const $ = cheerio.load(item);
       let data = {};
 
@@ -954,19 +991,24 @@ class Twitter extends Adapter {
         return Array.from(elements).map(element => element.outerHTML);
       });
 
+      let commentDetails = {};
       for (const comment of existComments) {
         const $ = cheerio.load(comment);
 
-        // Find the element for the username inside each individual comment
-        const allText = $('a[role="link"]').text();
-        const user_name = allText.split('@')[0].trim(); // Trim any extra spaces
+        // Find the href for the username inside each individual comment
+        const linkElement = $('a[tabindex="-1"]');
+        const href = linkElement.attr('href'); // Get the href attribute value
 
-        // console.log('user_name:', user_name);
+        if (href) {
+          const user_name = href.replace('/', '').trim(); // Remove leading slash
 
-        if (user_name === this.username) {
-          console.log('Already posted the comment');
-          isAlreadComment = true;
-          break;
+          // console.log('user_name:', user_name);
+
+          if (user_name === this.username) {
+            console.log('Already posted the comment');
+            isAlreadComment = true;
+            break;
+          }
         }
       }
 
@@ -976,11 +1018,11 @@ class Twitter extends Adapter {
       console.log('isTimestampValid', isTimestampValid);
       if (isTimestampValid && !isAlreadComment) {
         // Click the comment button if the timestamp check is valid
-        isCommented = await this.clickCommentButton(
+        commentDetails = await this.clickCommentButton(
           currentPage,
           tweets_content,
         );
-
+        // console.log('commentDetails', commentDetails);
         // Store the current timestamp as the new 'LAST_COMMENT_MADE'
         this.commentsDB.createTimestamp('LAST_COMMENT_MADE', currentTimeStamp);
 
@@ -1042,7 +1084,7 @@ class Twitter extends Adapter {
               commentText,
             );
             if (commentContainer) {
-              console.log('Found comment container for the matching comment.');
+              // console.log('Found comment container for the matching comment.');
               let currentUrl = currentPage.url();
               await this.clickLikeButton(currentPage, commentContainer); // Pass the comment container to the click function
               // check if url changed
@@ -1067,7 +1109,7 @@ class Twitter extends Adapter {
         }
       }
 
-      if (screen_name && tweet_text && isCommented) {
+      if (screen_name && tweet_text && commentDetails !== null) {
         data = {
           user_name: user_name,
           screen_name: screen_name,
@@ -1078,6 +1120,7 @@ class Twitter extends Adapter {
           time_post: time,
           keyword: this.searchTerm,
           hash: hash,
+          commentDetails: commentDetails
         };
       }
 
@@ -1439,7 +1482,10 @@ class Twitter extends Adapter {
               id: data.tweets_id,
             };
             const existingItem = await this.db.getItem(checkItem);
-            if (!existingItem) {
+            if (
+              (!existingItem && data.tweets_id !== undefined) ||
+              data.tweets_id !== null
+            ) {
               this.cids.create({
                 id: data.tweets_id,
                 round: round,
@@ -1681,7 +1727,7 @@ class Twitter extends Adapter {
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -1706,7 +1752,8 @@ class Twitter extends Adapter {
       // go to the comment page
       const url = `https://x.com/${inputItem.commentDetails.username}/status/${inputItem.commentDetails.commentId}`;
       await verify_page.goto(url, { timeout: 60000 });
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await verify_page.waitForTimeout(await this.randomDelay(4000));
+
       // check if the page gave 404
       let confirmed_no_tweet = false;
       await verify_page.evaluate(() => {
