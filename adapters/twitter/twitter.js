@@ -10,7 +10,8 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
 const e = require('express');
-
+const { getContext } = require('../context/context');
+const { askllama } = require('../LLaMa/llama');
 /**
  * Twitter
  * @class
@@ -1051,12 +1052,44 @@ class Twitter extends Adapter {
     * textToRead receives a blurb of text 
     @return => templated blurb
 */
-
+  async filterText(){
+    
+  }
   async genText(textToRead) {
-    const response = await askCopilot(`Generate a Twitter comment related to Koii Network in the text, do not use any refrences, for this post: ${textToRead}`);
-    return response;
+    const context = await getContext();
+    const purposePrompt = await this.purposePrompt();
+    let comment;
+    try {
+      const response = await askllama(`${context}${purposePrompt} ${textToRead}`);
+      if (response){
+        comment = response;
+      }
+    }catch(e){
+      console.log('Error in askllama', e);
+    }
+    if (!comment){
+      try{
+        const response = await askCopilot(`${context}${purposePrompt} ${textToRead}`);
+        return response;
+      }catch(e){
+        console.log('Error in askCopilot', e);
+      }
+    }
+    return comment;
   }
 
+  /*
+    purpose-prompt
+    */
+  async purposePrompt(){
+    const purposes = [
+      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. ", 
+      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious.", 
+      "Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. "
+    ]
+    const randomPurpose = purposes[Math.floor(Math.random() * purposes.length)];
+    return randomPurpose;
+  }
   /**
    * Attempts to return a sensible snippet from the provided text
    * @param {*} text
