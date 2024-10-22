@@ -11,8 +11,7 @@ const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
 const e = require('express');
 const {Context} = require('../context/context');
-const { askllama } = require('../LLaMa/llama');
-const { askCopilot } = require('../copilot/copilot');
+const { askBoth } = require('../AI_Gen');
 /**
  * Twitter
  * @class
@@ -42,6 +41,7 @@ class Twitter extends Adapter {
     this.comment = '';
     this.meme = '';
     this.username = '';
+    this.context = new Context();
   }
 
   /**
@@ -719,6 +719,9 @@ class Twitter extends Adapter {
     // write a comment and post
     console.log('Start genText *******************');
     let genText = await this.genText(tweets_content);
+    if (!genText){
+      return;
+    }
     console.log('genText', genText);
     console.log('End genText *******************');
 
@@ -969,7 +972,7 @@ class Twitter extends Adapter {
           const elements = document.querySelectorAll('article[aria-labelledby]');
           return Array.from(elements).map(element => element.outerHTML);
         });
-      
+        
         console.log('Found comments: ', comments.length);
         
         for (const comment of comments) {
@@ -1053,42 +1056,14 @@ class Twitter extends Adapter {
     * textToRead receives a blurb of text 
     @return => templated blurb
 */
-  async filterNewLineChar(text){
-    // remove /n
-    console.log('text', text);
-    const filteredText = text.replace(/\n/g, ' ');
-    return filteredText;
-  }
 
-  async filterDoubleQuote(text){
-    const filteredText = text.replace(/"/g, '');
-    return filteredText;
-  }
 
   async genText(textToRead) {
-    this.context = new Context();
+    
     await this.context.initializeContext();
     const contextInText = await this.context.getContext();
     const purposePrompt = await this.purposePrompt();
-    let comment;
-    try {
-      const response = await askllama(`${contextInText}${purposePrompt} ${textToRead}`);
-      if (response){
-        comment = response;
-      }
-    }catch(e){
-      console.log('Error in askllama', e);
-    }
-    if (!comment){
-      try{
-        const filteredText = await this.filterNewLineChar(contextInText+textToRead+purposePrompt);
-        const response = await askCopilot(filteredText);
-        const filteredResponse = await this.filterDoubleQuote(response);
-        return filteredResponse;
-      }catch(e){
-        console.log('Error in askCopilot', e);
-      }
-    }
+    const comment = await askBoth(contextInText+textToRead+purposePrompt);
     return comment;
   }
 
@@ -1504,6 +1479,8 @@ class Twitter extends Adapter {
         .find('div[data-testid="tweetText"]')
         .first()
         .text();
+      // Add the tweet text to the db for update context
+      await this.context.addToDB('Daily-GenText', tweet_text);
       const timeRaw = $(el).find('time').attr('datetime');
       const time = await this.convertToTimestamp(timeRaw);
       // this is for the hash and salt

@@ -1,9 +1,10 @@
 const PCR = require('puppeteer-chromium-resolver');
 
 async function askCopilot(question) {
-  const options = {};
-  const stats = await PCR(options);
-  const browser = await stats.puppeteer.launch({
+  try{
+    const options = {};
+    const stats = await PCR(options);
+    const browser = await stats.puppeteer.launch({
     executablePath: stats.executablePath,
     headless: false,
     userAgent:
@@ -84,9 +85,12 @@ async function askCopilot(question) {
     return element ? element.innerText : null;
   });
 
-  await page.waitForTimeout(2000);
-  await browser.close();
-  return textContent;
+    await page.waitForTimeout(2000);
+    await browser.close();
+    return textContent;
+  } catch (e) {
+    return '';
+  }
 }
 
 module.exports = { askCopilot };

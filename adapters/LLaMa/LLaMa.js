@@ -1,5 +1,3 @@
-
-
 async function askllama(question) {
     return false;
 }
