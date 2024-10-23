@@ -10,7 +10,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
 const e = require('express');
-const {Context} = require('../context/context');
+const { Context } = require('../context/context');
 const { askBoth } = require('../AI_Gen');
 /**
  * Twitter
@@ -722,10 +722,10 @@ class Twitter extends Adapter {
     // write a comment and post
     console.log('Start genText *******************');
     let genText = await this.genText(tweets_content);
-    if (!genText){
+    if (!genText) {
       return;
     }
-    console.log('genText', genText);
+    console.log('genText:', genText);
     console.log('End genText *******************');
 
     await this.slowFingerSlide(currentPage, 150, 500, 160, 300, 100, 2); // Avoid button overlay
@@ -817,6 +817,13 @@ class Twitter extends Adapter {
                 commentText: genText,
               };
               console.log('Found comment');
+              // Store the current timestamp as the new 'LAST_COMMENT_MADE'
+              const currentTimeStamp = await this.getCurrentTimestamp();
+              this.commentsDB.createTimestamp(
+                'LAST_COMMENT_MADE',
+                currentTimeStamp,
+              );
+
               return commentDetails;
             }
           }
@@ -1028,9 +1035,6 @@ class Twitter extends Adapter {
           tweets_content,
         );
         // console.log('commentDetails', commentDetails);
-        // Store the current timestamp as the new 'LAST_COMMENT_MADE'
-        this.commentsDB.createTimestamp('LAST_COMMENT_MADE', currentTimeStamp);
-
         console.log('Comment action performed, and timestamp updated.');
       } else {
         console.log('No comment action was taken due to recent activity.');
@@ -1153,25 +1157,23 @@ class Twitter extends Adapter {
     @return => templated blurb
 */
 
-
   async genText(textToRead) {
-    
     await this.context.initializeContext();
     const contextInText = await this.context.getContext();
     const purposePrompt = await this.purposePrompt();
-    const comment = await askBoth(contextInText+textToRead+purposePrompt);
+    const comment = await askBoth(contextInText + textToRead + purposePrompt);
     return comment;
   }
 
   /*
     purpose-prompt
     */
-  async purposePrompt(){
+  async purposePrompt() {
     const purposes = [
-      "Your character encounters a tweet like the one above, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI!   ", 
-      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ", 
-      "Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! "
-    ]
+      'Your character encounters a tweet like the one above, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI!   ',
+      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ",
+      'Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ',
+    ];
     const randomPurpose = purposes[Math.floor(Math.random() * purposes.length)];
     return randomPurpose;
   }
@@ -1764,7 +1766,10 @@ class Twitter extends Adapter {
           return false;
         }
         // check if the tweets_content match
-        if (commentRes.result.tweets_content === inputItem.data.commentDetails.commentText) {
+        if (
+          commentRes.result.tweets_content ===
+          inputItem.data.commentDetails.commentText
+        ) {
           console.log('Content match');
           auditBrowser.close();
           return true;
