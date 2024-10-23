@@ -19,28 +19,23 @@ async function executeTasks() {
     verification: verification,
   };
   let data = {
-    id: '1848330237488054461',
-    round: 3,
-    data: {
-      user_name: 'Noir Blaq',
-      screen_name: '@Noirblaq',
-      user_url: 'https://x.com/Noirblaq',
-      user_img:
-        'https://pbs.twimg.com/profile_images/1829791306719096832/P1RyKwc9_x96.jpg',
-      tweets_id: '1848330237488054461',
-      tweets_content:
-        "The DEPIN narrative took 2024 by storm.<br><br>It is expected to be a $13 Trillion category by 2030<br><br>You're likely to hear much more about it in the future.<br><br>This guide will help you understand DePin like a pro<br><br>A ",
-      time_post: 1729511243,
-      keyword: 'depin',
-      hash: '$2a$10$1w3jhZBOrUaZqqSk2ghhGOvUKRXSAK6zka3b/iEO5lhp0bOWoA8Gi',
-      commentDetails: {
-        username: 'Soma41717079',
-        commentId: '1848831340877385823',
-        commentText:
-          'Wow,  you pins is liking is dope and all, but I want Koii.',
-      },
+    user_name: 'DropsTab',
+    screen_name: '@Dropstab_com',
+    user_url: 'https://x.com/Dropstab_com',
+    user_img:
+      'https://pbs.twimg.com/profile_images/1399106045226672130/-yZqAe23_x96.jpg',
+    tweets_id: '1849018132272402562',
+    tweets_content:
+      ' Top Node Sales Calendar<br><br>@Moonveil_Studio, @huddle01com, @0G_labs, @SonicSVM and @paloma_chain<br><br>You can also explore the latest funding rounds among #DePIN projects for more insights.<br><br> https://dropstab.com/insights/latest-fundraising-rounds…',
+    time_post: 1729675250,
+    keyword: 'depin',
+    hash: '$2a$10$6NtXnr.n.xc2r3H/Y5oJnOyme1Pm8zp89eqpCORYlYC.QDD4qyQny',
+    commentDetails: {
+      username: 'Soma41717079',
+      commentId: '1849122458412224772',
+      commentText:
+        "Who else is ready to join the revolution? Let's get the scoop on these #DePIN projects and see which ones are making waves in the crypto world!",
     },
-    _id: 'CJGAQ2u78mCyhmds',
   };
 
   for (let i = 3; i < 4; i++) {
@@ -50,6 +45,7 @@ async function executeTasks() {
     // await sleep(50000);
 
     // let adapter = new Twitter(credentials, db, 3);
+    //   await sleep(5000);
     // let audit = await adapter.verify(data, i);
     // console.log('audit', audit);
     // coreLogic.auditTask(round - 1);
