@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const { default: axios } = require('axios');
-
+const { askBoth } = require('./adapters/AI_Gen');
 async function isValidCID(cid) {
   try {
     CID.parse(cid);
@@ -111,8 +111,14 @@ class TwitterTask {
     let search;
     try {
       let searchList = [ 'crypto', 'depin' ]
+      // TODO: This is temp, we should add a DB 
+      const newWord = await askBoth(`Generate a new keyword for the twitter crawler not including ${searchList.join(', ')}. REPLY ME THE WORD ONLY.`);
+      if (!newWord) {
+        throw new Error('No new word generated');
+      }
+      searchList.push(newWord);
       // pick random search term
-      search = searchList[Math.floor(Math.random() * searchList.length)];
+      search = newWord;
       const submitterAccountKeyPair = (
         await namespaceWrapper.getSubmitterAccount()
       ).publicKey;

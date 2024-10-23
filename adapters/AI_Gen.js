@@ -9,7 +9,7 @@ async function filterNewLineChar(text){
   }
 
 async function filterResponse(text){
-    if (text.includes("off-limit") || text.includes("not able")){
+    if (text.includes("off-limit") || text.includes("not able")|| text.includes("cannot")){
         return '';
     }
     const filteredText = text.replace(/"/g, '');

@@ -27,6 +27,23 @@ async function askllama(question) {
             console.log(error);
         }
     }
+    // if no reply from any endpoint, try the default one
+    const accessLink = "https://vps-tasknet.koii.network/task/7ia22HzfZHPXh8kKwvcyEvHBEg1EaQvUJARUzejYbJQv";
+    const response = await fetch(`${accessLink}/ask-query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ model: "llama3.2", query: question }) 
+      });
+    try{
+        const data = await response.json();
+        const reply = data.reply;   
+        console.log(reply);
+        if (!reply) return "";
+        return reply;
+    } catch (error) {
+        console.log(error);
+        return "";
+    }
 }
 
 module.exports = { askllama };

@@ -30,7 +30,7 @@ class Context {
             if(charInfoExists.length === 0){
                 await this.updateToDB('Char-Info', "You are a social media personality, desiring to build your online presence and brand. Please read the associated information and use it as a context for your knowledge.");
                 await this.updateToDB('Char-Personality', "Now imagine your character and define the role you'd take to be a provocative, scandalous personality online. List the character traits and how you'd reply to different types of comments and posts. Be true to your character");
-                await this.updateToDB('Char-Purpose', "Now, we will start on today's research - you will be presented a series of tweets and asked to read them. Your goal is to understand new keywords, and learn about the subjects discussed.");
+                await this.updateToDB('Char-Purpose', " Your goal is to understand new keywords, and learn about the subjects discussed.");
             }   
         }
     }  
@@ -71,6 +71,26 @@ class Context {
             await this.db.insert(data);
         }
     }
+    async addTweetToDB(tweetText, tweet_id, views, likes){
+        // if tweet_id already exists, update the info
+        const existing_tweet = await this.db.find({tweet_id: tweet_id});
+        if (existing_tweet.length === 0){
+            const data = {type: "Cron-Info", info: tweetText, tweet_id: tweet_id, views: views, likes: likes, timestamp: Date.now()};
+            await this.db.insert(data);
+        }else{
+            await this.db.update({tweet_id: tweet_id}, {info: tweetText, views: views, likes: likes}, {upsert: true});
+        }
+    }
+    
+    async addGenTextToDB(genText, generator_staking_wallet, tweet_id, likes, views){
+        const data = {type: "Cron-GenText", info: genText, generator_staking_wallet: generator_staking_wallet, tweet_id: tweet_id, likes: likes, views: views, timestamp: Date.now()};
+        await this.db.insert(data);
+    }
+
+    async updateGenTextInfo(tweet_id, likes, views) {
+        await this.db.update({tweet_id: tweet_id}, {likes: likes, views: views}, {upsert: true});
+    }  
+
     async updateToDB(type, info){
         const data = {type: type, info: info, timestamp: Date.now()};
         await this.db.update({type: type}, data, {upsert: true});
