@@ -727,6 +727,7 @@ class Twitter extends Adapter {
     }
     console.log('genText:', genText);
     console.log('End genText *******************');
+    await this.context.addToDB('Daily-GenText', genText);
 
     await this.slowFingerSlide(currentPage, 150, 500, 160, 300, 100, 2); // Avoid button overlay
     const replybuttonSelector = 'button[data-testid="reply"]'; // Selector for the reply button
@@ -1463,8 +1464,9 @@ class Twitter extends Adapter {
             };
             const existingItem = await this.db.getItem(checkItem);
             if (
-              (!existingItem && data.tweets_id !== undefined) ||
-              data.tweets_id !== null
+              !existingItem &&
+              data.tweets_id !== undefined &&
+              data.commentDetails.commentId !== undefined
             ) {
               this.cids.create({
                 id: data.tweets_id,
@@ -1566,8 +1568,6 @@ class Twitter extends Adapter {
         .find('div[data-testid="tweetText"]')
         .first()
         .text();
-      // Add the tweet text to the db for update context
-      await this.context.addToDB('Daily-GenText', tweet_text);
       const timeRaw = $(el).find('time').attr('datetime');
       const time = await this.convertToTimestamp(timeRaw);
       // this is for the hash and salt
@@ -1732,7 +1732,7 @@ class Twitter extends Adapter {
       await verify_page.setViewport({ width: 1024, height: 4000 });
       await verify_page.waitForTimeout(await this.randomDelay(3000));
       // go to the comment page
-      const url = `https://x.com/${inputItem.data.commentDetails.username}/status/${inputItem.data.commentDetails.commentId}`;
+      const url = `https://x.com/${inputItem.commentDetails.username}/status/${inputItem.commentDetails.commentId}`;
       await verify_page.goto(url, { timeout: 60000 });
       await verify_page.waitForTimeout(await this.randomDelay(4000));
 
@@ -1750,7 +1750,7 @@ class Twitter extends Adapter {
       console.log('Retrieve item for', url);
       const commentRes = await this.retrieveItem(
         verify_page,
-        inputItem.data.commentDetails.commentText,
+        inputItem.commentDetails.commentText,
         'commentPage',
       );
 
@@ -1768,7 +1768,7 @@ class Twitter extends Adapter {
         // check if the tweets_content match
         if (
           commentRes.result.tweets_content ===
-          inputItem.data.commentDetails.commentText
+          inputItem.commentDetails.commentText
         ) {
           console.log('Content match');
           auditBrowser.close();
