@@ -515,25 +515,6 @@ class Twitter extends Adapter {
     await this.randomMouseMovement(page, finishDelay);
   };
 
-  // Function to simulate random mouse movement during thinking pauses
-  randomMouseMovement = async (page, pauseDuration) => {
-    const startX = Math.random() * 500 + 100; // Start somewhere within a random range
-    const startY = Math.random() * 300 + 100;
-
-    // Move the mouse to the initial position
-    await page.mouse.move(startX, startY);
-
-    const moveSteps = Math.floor(Math.random() * 5 + 3); // Simulate 3 to 5 movements
-    const stepDelay = pauseDuration / moveSteps; // Divide the pause duration for smooth movement
-
-    for (let i = 0; i < moveSteps; i++) {
-      const randomX = startX + Math.random() * 100 - 50; // Move randomly within a small range
-      const randomY = startY + Math.random() * 100 - 50;
-      await page.mouse.move(randomX, randomY);
-      await page.waitForTimeout(stepDelay); // Wait a bit before the next movement
-    }
-  };
-
   // clean text
   cleanText = async text => {
     return text.replace(/\s+/g, '').trim();
