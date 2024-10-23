@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const { default: axios } = require('axios');
-
+const { askBoth } = require('./adapters/AI_Gen');
 async function isValidCID(cid) {
   try {
     CID.parse(cid);

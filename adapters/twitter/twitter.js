@@ -10,7 +10,8 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
 const e = require('express');
-
+const { Context } = require('../context/context');
+const { askBoth } = require('../AI_Gen');
 /**
  * Twitter
  * @class
@@ -40,6 +41,7 @@ class Twitter extends Adapter {
     this.comment = '';
     this.meme = '';
     this.username = '';
+    this.context = new Context();
   }
 
   /**
@@ -720,7 +722,10 @@ class Twitter extends Adapter {
     // write a comment and post
     console.log('Start genText *******************');
     let genText = await this.genText(tweets_content);
-    console.log('genText', genText);
+    if (!genText) {
+      return;
+    }
+    console.log('genText:', genText);
     console.log('End genText *******************');
 
     await this.slowFingerSlide(currentPage, 150, 500, 160, 300, 100, 2); // Avoid button overlay
@@ -812,6 +817,13 @@ class Twitter extends Adapter {
                 commentText: genText,
               };
               console.log('Found comment');
+              // Store the current timestamp as the new 'LAST_COMMENT_MADE'
+              const currentTimeStamp = await this.getCurrentTimestamp();
+              this.commentsDB.createTimestamp(
+                'LAST_COMMENT_MADE',
+                currentTimeStamp,
+              );
+
               return commentDetails;
             }
           }
@@ -1023,9 +1035,6 @@ class Twitter extends Adapter {
           tweets_content,
         );
         // console.log('commentDetails', commentDetails);
-        // Store the current timestamp as the new 'LAST_COMMENT_MADE'
-        this.commentsDB.createTimestamp('LAST_COMMENT_MADE', currentTimeStamp);
-
         console.log('Comment action performed, and timestamp updated.');
       } else {
         console.log('No comment action was taken due to recent activity.');
@@ -1109,7 +1118,7 @@ class Twitter extends Adapter {
         }
       }
 
-      if (screen_name && tweet_text && commentDetails !== null) {
+      if (screen_name && tweet_text && commentDetails.commentId) {
         data = {
           user_name: user_name,
           screen_name: screen_name,
@@ -1148,55 +1157,26 @@ class Twitter extends Adapter {
     @return => templated blurb
 */
 
-  genText(textToRead) {
-    let snippetSelectors = [
-      '#Person',
-      '#Possessive #Noun',
-      '#Preposition #ProperNoun',
-      '#ProperNoun',
-      '#FirstName',
-      '#Adjective #Noun #Noun',
-      '#Adjective #Noun',
-      '#Noun #Noun #Noun',
-      '#Preposition #ProperNoun',
-      '#Verb #Noun',
-      '#ProperNoun #Verb',
-      '#Verb #ProperNoun',
-      '#Adverb #Verb',
-    ];
-    let result = 0;
-    let n = 0;
-    do {
-      let snippet = this.selectSnippet(snippetSelectors[n], textToRead);
-      if (snippet.length > 1) {
-        // console.log('found result', snippet, 'with selector ', snippetSelectors[n])
-        if (snippet.length < 20) {
-          result = snippet;
-          // console.log('\r\nfound: "', result ,'" on selector ', n)
-          if (n > 7) result = ' you ' + result.substring(2);
-        }
-      }
-      n++;
-    } while (result == 0 && n < snippetSelectors.length);
-
-    if (result == 0) {
-      // console.log('\r\nFAILED to find text in ', textToRead)
-      result = '#REDTober';
-    }
-
-    let templates = [
-      `We got ${result} before we got Koii mainnet`,
-      `I can't believe we got ${result} before Koii launched.`,
-      `Wow, ${result} is dope and all, but I want Koii.`,
-      `Wen ${result}, Koii launch?`,
-    ];
-    let output = templates[Math.floor(Math.random() * (templates.length - 1))];
-    // output = nlp(output);
-    // let output = result;
-    console.log('genText returning ', output);
-    return output;
+  async genText(textToRead) {
+    await this.context.initializeContext();
+    const contextInText = await this.context.getContext();
+    const purposePrompt = await this.purposePrompt();
+    const comment = await askBoth(contextInText + textToRead + purposePrompt);
+    return comment;
   }
 
+  /*
+    purpose-prompt
+    */
+  async purposePrompt() {
+    const purposes = [
+      'Your character encounters a tweet like the one above, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI!   ',
+      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ",
+      'Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ',
+    ];
+    const randomPurpose = purposes[Math.floor(Math.random() * purposes.length)];
+    return randomPurpose;
+  }
   /**
    * Attempts to return a sensible snippet from the provided text
    * @param {*} text
@@ -1586,6 +1566,8 @@ class Twitter extends Adapter {
         .find('div[data-testid="tweetText"]')
         .first()
         .text();
+      // Add the tweet text to the db for update context
+      await this.context.addToDB('Daily-GenText', tweet_text);
       const timeRaw = $(el).find('time').attr('datetime');
       const time = await this.convertToTimestamp(timeRaw);
       // this is for the hash and salt
@@ -1784,7 +1766,10 @@ class Twitter extends Adapter {
           return false;
         }
         // check if the tweets_content match
-        if (commentRes.result.tweets_content === inputItem.data.commentDetails.commentText) {
+        if (
+          commentRes.result.tweets_content ===
+          inputItem.data.commentDetails.commentText
+        ) {
           console.log('Content match');
           auditBrowser.close();
           return true;
