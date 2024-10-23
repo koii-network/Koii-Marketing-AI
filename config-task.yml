@@ -1,10 +1,22 @@
 # Name and metadata of your task
-task_name: 'Birds Tweeting Task'
+task_name: 'Koii VIP Marketing AI'
 author: 'Koii'
-description: "We invite you to volunteer your spare Twitter account and join our mission to hold politicians accountable and shake up the status quo! We're on a quest to spotlight and confront public figures who fall short of integrity and responsibility. By diving into this initiative, you'll play a crucial role in exposing crucial issues and shaking up the political landscape. Please note that we only make one post per account every 24 hours. The task involves posting one (1) comment per day, which will look like:  '(TWITTER_COMMENTS) + 🛋🛋🛋'. Before participating, please ensure that your volunteer Twitter account has passed the verification process. The base bounty per round is 1000 RATS."
+description: "Turn your node into a VIP KOL. Key Opinion Leaders are a crucial part of growing the Koii community, but we often don't have enough time to be on Twitter all day.
+Using Artificial Intelligence directly on your device, this task volunteers your spare Twitter account to help spread the word about Koii. 
+
+The task will 
++ Like Koii Related Posts
++ Generate and leave AI Comments on related posts+ Retweet occasional Koii announcements
++ Help share your referral code
+
+While running this task, you will receive rewards based on the number of views your AI agent gets on it's posts. 
+Rewards are distributed in $VIP tokens, which entitle you to special offers and airdrops within the Koii community (including $KOII distributions weekly!)
+
+Each round, 100 $VIP are released, and divided among all staked nodes based on how many views they received as a portion of the total views that round.
+Lock in and start making passive income as your AI agent does the hard work!"
 repositoryUrl: 'https://github.com/koii-network/task-X'
-imageUrl: 'https://www.koii.network/_next/image?url=https%3A%2F%2Fkoii-ocean.s3.us-west-1.amazonaws.com%2Ff92f6ccb933f4558934a7438511055d3.png&w=640&q=75'
-infoUrl: 'https://www.koii.network/ocean/66e88d57447c327be47bb5bd'
+imageUrl: 'https://bafybeide6ywkth337mb37zye7l6b3xbxzu3ltqxqjrjotceofxiqzbbrpm.ipfs.w3s.link/image.png'
+infoUrl: 'https://x.com/al_from_koii/status/1848790702186238018'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -22,7 +34,7 @@ minimum_stake_amount: 0.1
 
 # total_bounty_amount cannot be grater than bounty_amount_per_round
 # total bounty is not accepted in case of update task
-total_bounty_amount: 100
+total_bounty_amount: 1000
 bounty_amount_per_round: 10
 
 #Number of times allowed to re-submit the distribution  list in case the distribution list is audited
@@ -51,17 +63,19 @@ requirementsTags:
   - type: STORAGE
     value: '5 GB'
 
-# token type KPL
-task_type: 'KPL'
+## Task Bounty Type ##
+# KOII or KPL
+task_type: "KPL"
 
-# mint address BIRD
-token_type: 'NGFruaQX9xHqWv195RNQL2wtq2LJwTmnkE9XjGAZKHx'
+## Token Mint Address (ONLY for KPL tasks) ##
+# The Fire Token address is provided as an example.
+token_type: "3kh898gitJDSb6b7MsntLqyUAvy3Y6D4PkMyGfinubht"
 
 tags: ['Social Posting']
-environment: 'TEST'
+environment: 'PRODUCTION'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: '3gSfSGoBYLBd65kn3XBq7QAbPUwknBQQA7zz69yZi6Vx'
+task_id: '7WPRJc9845FrvZAnwQKnNhRPu3DfGw7WVWXS8LscAXjz'
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'updated the last comment timeStamp'
+migrationDescription: ''
