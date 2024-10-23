@@ -42,8 +42,8 @@ requirementsTags:
     value: 'TWITTER_PASSWORD'
     description: 'The password of your volunteer Twitter account.'
   - type: TASK_VARIABLE
-    value: 'TWITTER_PHONE'
-    description: 'If verification is required, will use your phone number to login.'
+    value: 'TWITTER_VERIFICATION'
+    description: 'If verification is required, will use your email or phone number to login.'
   - type: CPU
     value: '4-core'
   - type: RAM
