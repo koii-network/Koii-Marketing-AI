@@ -1463,8 +1463,9 @@ class Twitter extends Adapter {
             };
             const existingItem = await this.db.getItem(checkItem);
             if (
-              (!existingItem && data.tweets_id !== undefined) ||
-              data.tweets_id !== null
+              !existingItem &&
+              data.tweets_id !== undefined &&
+              data.commentDetails.commentId !== undefined
             ) {
               this.cids.create({
                 id: data.tweets_id,
