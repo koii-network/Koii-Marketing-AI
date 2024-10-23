@@ -462,6 +462,7 @@ class Twitter extends Adapter {
     await page.click(selector); // Focus on the input field
     for (let i = 0; i < genText.length; i++) {
       const char = genText[i];
+      console.log('Typing character:', char);
 
       // await page.type(selector, char);
       if (char === char.toUpperCase() && char.match(/[a-zA-Z]/)) {
@@ -512,7 +513,7 @@ class Twitter extends Adapter {
     );
 
     // Simulate random mouse movement during the pause
-    await this.randomMouseMovement(page, finishDelay);
+    await page.waitForTimeout(finishDelay);
   };
 
   // clean text
@@ -1148,10 +1149,11 @@ class Twitter extends Adapter {
 */
 
   async genText(textToRead) {
-    await this.context.initializeContext();
-    const contextInText = await this.context.getContext();
-    const purposePrompt = await this.purposePrompt();
-    const comment = await askBoth(contextInText + textToRead + purposePrompt);
+    // await this.context.initializeContext();
+    // const contextInText = await this.context.getContext();
+    // const purposePrompt = await this.purposePrompt();
+    // const comment = await askBoth(contextInText + textToRead + purposePrompt);
+    const comment = ''
     return comment;
   }
 
