@@ -1114,7 +1114,7 @@ class Twitter extends Adapter {
         }
       }
 
-      if (screen_name && tweet_text && commentDetails !== null) {
+      if (screen_name && tweet_text && commentDetails.commentId) {
         data = {
           user_name: user_name,
           screen_name: screen_name,

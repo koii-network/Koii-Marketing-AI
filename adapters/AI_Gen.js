@@ -1,4 +1,4 @@
-const { askllama } = require('./LLaMa/llama');
+const { askllama } = require('./LLaMa/LLaMa');
 const { askCopilot } = require('./copilot/copilot');
 
 async function filterNewLineChar(text){
