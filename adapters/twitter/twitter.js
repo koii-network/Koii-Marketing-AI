@@ -449,69 +449,69 @@ class Twitter extends Adapter {
   };
 
   humanType = async (page, selector, genText) => {
-    // let textList = [
-    //     `We got ${genText} before we got Koii mainnet`,
-    //     `I can't believe we got ${genText} before Koii launched.`,
-    //     `Wow, ${genText} is dope and all, but I want Koii.`,
-    //     `Wen ${genText}, Koii launch?`
-    // ]
-    // const randomIndex = Math.floor(Math.random() * textList.length);
-
-    // Get the random element from the array
-    // text = textList[randomIndex];
-    await page.click(selector); // Focus on the input field
-    for (let i = 0; i < genText.length; i++) {
-      const char = genText[i];
-      console.log('Typing character:', char);
-
-      // await page.type(selector, char);
-      if (char === char.toUpperCase() && char.match(/[a-zA-Z]/)) {
-        await page.keyboard.down('Shift'); // Hold down Shift for capital letters
-        await page.keyboard.press(char); // Press the capital letter
-        await page.keyboard.up('Shift'); // Release Shift
+    // Focus on the input field
+    await page.click(selector);
+  
+    // Use Array.from to correctly handle emojis and surrogate pairs
+    const characters = Array.from(genText);
+  
+    for (let i = 0; i < characters.length; i++) {
+      const char = characters[i];
+      // console.log('Typing character:', char);
+  
+      // Check if the character is an emoji or special character (non-ASCII)
+      if (char.match(/[\u{1F600}-\u{1F6FF}]/u) || char.match(/[^\x00-\x7F]/)) {
+        // Use page.type for emojis and other non-ASCII characters
+        const emojiDelay = Math.random() * 1000 + 500;
+        await page.waitForTimeout(emojiDelay);
+        await page.type(selector, char);
       } else {
-        // Directly press other characters (lowercase, numbers, symbols)
+        // Use keyboard.press for normal characters
         if (char === ' ') {
           await page.keyboard.press('Space'); // Handle spaces explicitly
+        } else if (char === char.toUpperCase() && char.match(/[a-zA-Z]/)) {
+          await page.keyboard.down('Shift'); // Hold down Shift for capital letters
+          await page.keyboard.press(char); // Press the capital letter
+          await page.keyboard.up('Shift'); // Release Shift
         } else {
-          await page.keyboard.press(char);
+          await page.keyboard.press(char); // Press lowercase letters and other symbols
         }
       }
-
+  
       // Randomly vary typing speed to mimic human behavior
       const typingSpeed = Math.random() * 250 + 50;
       await page.waitForTimeout(typingSpeed);
-
+  
       // Randomly add "thinking pauses" after some words
       if (char === ' ' && Math.random() < 0.2) {
         const thinkingPause = Math.random() * 1500 + 500;
         await page.waitForTimeout(thinkingPause);
       }
-
+  
       // Randomly simulate small typing errors and corrections
       if (Math.random() < 0.08) {
         // 8% chance of error
         const errorChar = String.fromCharCode(
           Math.floor(Math.random() * 26) + 97,
         ); // Random lowercase letter
-        await page.type(selector, errorChar); // Type incorrect character
+        await page.keyboard.type(errorChar); // Type incorrect character
         await page.waitForTimeout(typingSpeed / 0.8); // Short delay after mistake
         await page.keyboard.press('Backspace'); // Correct the mistake
       }
-
+  
       // Randomly add a longer pause to mimic thinking (more rarely)
       if (Math.random() < 0.1) {
         const longPause = Math.random() * 2000 + 500;
         await page.waitForTimeout(longPause);
       }
     }
-
+  
     // Extra delay after finishing typing to simulate human thinking or reviewing
     const finishDelay = Math.random() * 2000 + 1000;
     console.log(
       `Finished typing. Waiting for additional mouse delay of ${finishDelay} ms`,
     );
-
+  
     // Simulate random mouse movement during the pause
     await page.waitForTimeout(finishDelay);
   };
