@@ -1,12 +1,22 @@
+async function filterResponse(text){
+    if (text.includes("off-limit") || text.includes("not able")|| text.includes("cannot")){
+        return '';
+    }
+    const filteredText = text.replace(/"/g, '');
+    return filteredText;
+}
 async function getEndpoints(){
+    if (process.env.DEV_MODE){
+        return ["http://localhost:4628"];
+    }
     const endpoints = await fetch("https://vps-tasknet.koii.network/nodes/7ia22HzfZHPXh8kKwvcyEvHBEg1EaQvUJARUzejYbJQv")
     const endpointsList = (await endpoints.json()).map(node => node.data.url);
     console.log(endpointsList);
     return endpointsList;
 }
-async function askllama(question) {
+async function askllama(messages, options) {
     const endpoints = await getEndpoints();
-    console.log(question);
+    console.log(endpoints);
     // shuffle the endpoints
     const shuffledEndpoints = endpoints.sort(() => Math.random() - 0.5);
     for (let i = 0; i < shuffledEndpoints.length; i++) {
@@ -15,7 +25,7 @@ async function askllama(question) {
         const response = await fetch(`${accessLink}/ask-query`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ model: "llama3.2", query: question }) 
+            body: JSON.stringify({ model: "koiiLlama", messages: messages, options: options }) 
           });
         try{
             const data = await response.json();
@@ -32,7 +42,7 @@ async function askllama(question) {
     const response = await fetch(`${accessLink}/ask-query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ model: "llama3.2", query: question }) 
+        body: JSON.stringify({ model: "koiiLlama", messages: messages, options: options }) 
       });
     try{
         const data = await response.json();
@@ -45,5 +55,29 @@ async function askllama(question) {
         return "";
     }
 }
+async function askGeneralQuestion(generaalQuestion){
+    const messages = [
+        {role: "user", content: generaalQuestion}
+    ]; 
+    return await askllama(messages, {temperature: 1});
+    
+}
+async function askForComment(commentPrompt){
+    const messages = [
+        {role:"system", content:"Your task is to generate an interesting Twitter user-like comment with your own character and attitude in response to a user-provided tweet. Please REPLY the COMMENT only. "},
+        {role: "user", content: commentPrompt}
+    ];
+    const response = await askllama(messages, {temperature: 1, num_predict: 45});
+    return await filterResponse(response);
+}
 
-module.exports = { askllama };
+async function askForKeywords(keywordsPrompt){
+    const messages = [
+        {role:"system", content:"Please REPLY a KEYWORD based on the user request only."},
+        {role: "user", content: keywordsPrompt}
+    ];
+    const response = await askllama(messages, {temperature: 1, num_predict: 10});
+    return await filterResponse(response);
+}
+
+module.exports = { askllama, askGeneralQuestion, askForComment, askForKeywords };
