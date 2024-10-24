@@ -1,21 +1,10 @@
 # Name and metadata of your task
 task_name: 'Koii VIP Marketing AI'
 author: 'Koii'
-description: "Turn your node into a VIP KOL. Key Opinion Leaders are a crucial part of growing the Koii community, but we often don't have enough time to be on Twitter all day.
-Using Artificial Intelligence directly on your device, this task volunteers your spare Twitter account to help spread the word about Koii. 
-
-The task will 
-+ Like Koii Related Posts
-+ Generate and leave AI Comments on related posts+ Retweet occasional Koii announcements
-+ Help share your referral code
-
-While running this task, you will receive rewards based on the number of views your AI agent gets on it's posts. 
-Rewards are distributed in $VIP tokens, which entitle you to special offers and airdrops within the Koii community (including $KOII distributions weekly!)
-
-Each round, 100 $VIP are released, and divided among all staked nodes based on how many views they received as a portion of the total views that round.
-Lock in and start making passive income as your AI agent does the hard work!"
-repositoryUrl: 'https://github.com/koii-network/task-X'
-imageUrl: 'https://bafybeide6ywkth337mb37zye7l6b3xbxzu3ltqxqjrjotceofxiqzbbrpm.ipfs.w3s.link/image.png'
+markdownDescriptionPath: "./markdown.md"
+description: ""
+repositoryUrl: 'https://github.com/koii-network/Koii-Marketing-AI'
+imageUrl: 'https://bafybeidm7ppamf2gfkcx542osdwgi7naeailheprqnjq2n3jz2fnkof57i.ipfs.w3s.link/AIMarketing.png'
 infoUrl: 'https://x.com/al_from_koii/status/1848790702186238018'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
@@ -75,7 +64,7 @@ tags: ['Social Posting']
 environment: 'PRODUCTION'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: '7WPRJc9845FrvZAnwQKnNhRPu3DfGw7WVWXS8LscAXjz'
+task_id: '3ZG3SFAD2jiahEFHGvdLG1jcZvQV5b4UJ3jLB1yAZmgs'
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'Fix Headless Mode'
+migrationDescription: 'Improved the context'
