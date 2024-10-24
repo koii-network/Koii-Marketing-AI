@@ -11,7 +11,7 @@ const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
 const e = require('express');
 const { Context } = require('../context/context');
-const { askBoth } = require('../AI_Gen');
+const { askGeneralQuestion, askForComment, askForKeywords } = require('../LLaMa/LLaMa');
 /**
  * Twitter
  * @class
@@ -92,7 +92,7 @@ class Twitter extends Adapter {
       this.browser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userDataDir,
-        headless: false,
+        // headless: false,
         userAgent:
           'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
         args: [
@@ -1149,11 +1149,11 @@ class Twitter extends Adapter {
 */
 
   async genText(textToRead) {
-    // await this.context.initializeContext();
-    // const contextInText = await this.context.getContext();
-    // const purposePrompt = await this.purposePrompt();
-    // const comment = await askBoth(contextInText + textToRead + purposePrompt);
-    const comment = ''
+    await this.context.initializeContext();
+    const contextInText = await this.context.getContext();
+    const purposePrompt = await this.purposePrompt();
+    // const comment = await askForComment(contextInText + textToRead + purposePrompt);
+    const comment = await askForComment(textToRead + purposePrompt);
     return comment;
   }
 
@@ -1162,9 +1162,8 @@ class Twitter extends Adapter {
     */
   async purposePrompt() {
     const purposes = [
-      'Your character encounters a tweet like the one above, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI!   ',
-      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ",
-      'Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ',
+      'Generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. YOU CAN USE TWITTER EMOJI! ',
+      "Generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii Network to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. YOU CAN USE TWITTER EMOJI! ",
     ];
     const randomPurpose = purposes[Math.floor(Math.random() * purposes.length)];
     return randomPurpose;
@@ -1707,7 +1706,7 @@ class Twitter extends Adapter {
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
-        headless: false,
+        // headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
