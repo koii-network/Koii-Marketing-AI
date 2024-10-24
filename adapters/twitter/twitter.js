@@ -11,7 +11,7 @@ const bcrypt = require('bcryptjs');
 const nlp = require('compromise');
 const e = require('express');
 const { Context } = require('../context/context');
-const { askBoth } = require('../AI_Gen');
+const { askGeneralQuestion, askForComment, askForKeywords } = require('../LLaMa/LLaMa');
 /**
  * Twitter
  * @class
@@ -1161,7 +1161,8 @@ class Twitter extends Adapter {
     await this.context.initializeContext();
     const contextInText = await this.context.getContext();
     const purposePrompt = await this.purposePrompt();
-    const comment = await askBoth(contextInText + textToRead + purposePrompt);
+    // const comment = await askForComment(contextInText + textToRead + purposePrompt);
+    const comment = await askForComment(textToRead + purposePrompt);
     return comment;
   }
 
@@ -1170,9 +1171,8 @@ class Twitter extends Adapter {
     */
   async purposePrompt() {
     const purposes = [
-      'Your character encounters a tweet like the one above, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI!   ',
-      "Your character encounters a tweet like the one below, generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ",
-      'Your character encounters a tweet by Elon Musk - Kind Emperor and King of the World, like the one below, generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. NO EMOJI! ',
+      'Generate a fun and positive comment, that will entice interactions from others. PLEASE REPLY THE COMMENT ONLY. YOU CAN USE TWITTER EMOJI! ',
+      "Generate a fun and positive comment, that will entice interactions from others. If possible, draw on your knowledge about Koii Network to leave an insightful comment that will draw attention to the Koii mission and value. Don't be too obvious. PLEASE REPLY THE COMMENT ONLY. YOU CAN USE TWITTER EMOJI! ",
     ];
     const randomPurpose = purposes[Math.floor(Math.random() * purposes.length)];
     return randomPurpose;
