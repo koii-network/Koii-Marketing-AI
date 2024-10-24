@@ -1555,10 +1555,17 @@ class Twitter extends Adapter {
       const user_url =
         'https://x.com' + $(el).find('a[role="link"]').attr('href');
       const user_img = $(el).find('img[draggable="true"]').attr('src');
-      const tweet_text = $(el)
+      let tweet_text = '';
+      $(el)
         .find('div[data-testid="tweetText"]')
-        .first()
-        .text();
+        .contents()
+        .each((index, element) => {
+          if (element.tagName === 'span') {
+            tweet_text += $(element).text(); // Append text
+          } else if (element.tagName === 'img' && $(element).attr('alt')) {
+            tweet_text += $(element).attr('alt'); // Append emoji from alt attribute
+          }
+        });
       const timeRaw = $(el).find('time').attr('datetime');
       const time = await this.convertToTimestamp(timeRaw);
       // this is for the hash and salt
