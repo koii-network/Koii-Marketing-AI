@@ -2,7 +2,7 @@
 const Datastore = require('nedb-promises');
 const path = require('path');
 const dotenv = require('dotenv');
-const { askBoth } = require('../AI_Gen');
+const { askGeneralQuestion, askForComment, askForKeywords } = require('../LLaMa/LLaMa'); 
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 dotenv.config();
 
@@ -57,8 +57,8 @@ class Context {
         const update_info_prompt = `Based on what you've learned today, how has your character changed and what do you want to say about Koii - be sure to inspire others, and use keywords from our research today. SUMMARIZE THE INFO YOU LEARNED. ${daily_info.daily_info} ${info}`;
         const personality = (await this.getFromDB('Char-Personality')).map(item => item.info)[0];
         const update_personality_prompt = `Based on the interactions we've had today, how has your character evolved - be sure to imagine a better version of yourself that empathizes with the comments you've read today. SUMMARIZE THE PERSONALITY YOU'VE DEVELOPED. ${daily_info.daily_genText}  ${personality}`;
-        const updated_info = await askBoth(update_info_prompt);
-        const updated_personality = await askBoth(update_personality_prompt);
+        const updated_info = await askGeneralQuestion(update_info_prompt);
+        const updated_personality = await askGeneralQuestion(update_personality_prompt);
         await this.updateToDB('Char-Info', updated_info);
         await this.updateToDB('Char-Personality', updated_personality);
     }
